@@ -37,6 +37,7 @@ export function Spending({ onClose }) {
   const [amount, setAmount] = useState("");
   const [filter, setFilter] = useState([]);          // medicines shown (empty = all)
   const [choosing, setChoosing] = useState(false);
+  const [month, setMonth] = useState(0);             // 0 = whole year, 1…12
 
   async function load() {
     const [l, p] = await Promise.all([supabase.from("pharmacy_spending").select(),
@@ -73,9 +74,11 @@ export function Spending({ onClose }) {
   const keep = (l) => !filter.length || keysOf(l).some((k) => filter.includes(k));
   const toggle = (key) => setFilter(filter.includes(key) ? filter.filter((k) => k !== key) : [...filter, key]);
   const chosenNames = new Set(lines.filter(keep).map((l) => l.name));
-  const yl = lines.filter((l) => parseDay(l.day).getFullYear() === year && keep(l));
+  const inPeriod = (d) => d.getFullYear() === year && (!month || d.getMonth() + 1 === month);
+  const yl = lines.filter((l) => inPeriod(parseDay(l.day)) && keep(l));
   // With a filter, only payments noted for a medicine with those ingredients
-  const yp = payments.filter((p) => parseDay(p.paid_on).getFullYear() === year && (!filter.length || chosenNames.has(p.note)));
+  const yp = payments.filter((p) => inPeriod(parseDay(p.paid_on)) && (!filter.length || chosenNames.has(p.note)));
+  const monthName = (m) => { const t = new Date(year, m - 1, 1).toLocaleDateString(locale, { month: "long" }); return t.charAt(0).toUpperCase() + t.slice(1); };
   const sum = (arr, f) => arr.reduce((s, x) => s + Number(f(x) || 0), 0);
   const value = sum(yl, (l) => l.value), insurance = sum(yl, (l) => l.insurance_share);
   const years = [...new Set([thisYear, ...lines.map((l) => parseDay(l.day).getFullYear()), ...payments.map((p) => parseDay(p.paid_on).getFullYear())])].sort((a, b) => b - a);
@@ -104,7 +107,11 @@ export function Spending({ onClose }) {
           style="width:20px;height:20px;accent-color:var(--accent)" /><div class="main"><div>${o.label}</div>
           <div class="sub">${[...o.names].sort().join(", ")}</div></div></label>`)}`}
       <div class="row"><div class="main">${T("Année", "Year")}</div>
-        <select value=${year} onChange=${(e) => setYear(Number(e.target.value))}>${years.map((y) => html`<option value=${y}>${y}</option>`)}</select></div>
+        <select value=${year} onChange=${(e) => { setYear(Number(e.target.value)); setMonth(0); }}>${years.map((y) => html`<option value=${y}>${y}</option>`)}</select></div>
+      <div class="row"><div class="main">${T("Mois", "Month")}</div>
+        <select value=${month} onChange=${(e) => setMonth(Number(e.target.value))}>
+          <option value="0">${T("Toute l'année", "Whole year")}</option>
+          ${[1,2,3,4,5,6,7,8,9,10,11,12].map((m) => html`<option value=${m}>${monthName(m)}</option>`)}</select></div>
       <div class="row"><div class="main">${T("Valeur des boîtes reçues", "Value of boxes received")}</div><div class="sub">${euros(value)}</div></div>
       <div class="row"><div class="main">${T("Part Assurance maladie (estimée)", "Health insurance share (est.)")}</div><div class="sub">${euros(insurance)}</div></div>
       <div class="row"><div class="main name">${T("Reste avant mutuelle (estimé)", "Left before mutuelle (est.)")}</div><div class="name">${euros(value - insurance)}</div></div>
@@ -117,7 +124,7 @@ export function Spending({ onClose }) {
         <input inputmode="decimal" placeholder="0,00 €" value=${amount} onInput=${(e) => setAmount(e.target.value)} style="max-width:90px" />
         <button class="primary small" style="margin:0" disabled=${!amount.trim()}>${T("Ajouter", "Add")}</button></div>
     </form>
-    ${!monthKeys.length ? html`<div class="empty">${T(`Rien en ${year}.`, `Nothing in ${year}.`)}</div>` : monthKeys.map((k) => {
+    ${!monthKeys.length ? html`<div class="empty">${T(`Rien en ${month ? monthName(month) + " " : ""}${year}.`, `Nothing in ${month ? monthName(month) + " " : ""}${year}.`)}</div>` : monthKeys.map((k) => {
       const ml = yl.filter((l) => l.day.startsWith(k)), mp = yp.filter((p) => p.paid_on.startsWith(k));
       const rest = sum(ml, (l) => l.value) - sum(ml, (l) => l.insurance_share);
       const title = new Date(k + "-01T00:00:00").toLocaleDateString(locale, { month: "long" });
