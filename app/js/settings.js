@@ -45,7 +45,7 @@ export function Settings({ session, profiles, active, onSwitch, reload, openDeta
     <div class="section-title">${T("Compte", "Account")}</div>
     <div class="card">
       <div class="row"><div class="main">E-mail</div><div class="sub">${session.user.email}</div></div>
-      <button class="row rowbtn red" onClick=${() => supabase.auth.signOut()}>${T("Se déconnecter", "Sign out")}</button>
+      <button class="row rowbtn red" onClick=${() => confirm(T("Se déconnecter de MonMédoc sur ce navigateur ?", "Sign out of MonMédoc in this browser?")) && supabase.auth.signOut()}>${T("Se déconnecter", "Sign out")}</button>
     </div>
     <p class="note center">${T("Rappels, scan et ajout de traitements : dans l'app iPhone.", "Reminders, scanning and adding treatments: in the iPhone app.")}</p>
 
