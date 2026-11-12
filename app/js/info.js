@@ -28,12 +28,14 @@ function bullets(text) {
   return text.split(/\n+/).map((raw) => {
     let line = raw.trim();
     if (!line) return null;
+    // "·" bullet; "o " / "◦" sub-bullet (Word's sub-bullet is a letter o)
     const bullet = "·•-–—*".includes(line[0]);
-    if (bullet) line = line.slice(1).trim();
+    const sub = !bullet && ("◦○▪▫§\uF0A7".includes(line[0]) || /^[oO][ \t]/.test(line));
+    if (bullet || sub) line = line.slice(1).trim();
     line = line.replace(/[,;]+$/, "").trim();
     if (!line) return null;
     line = line[0].toUpperCase() + line.slice(1);
-    return { bullet, line };
+    return { bullet, sub, line };
   }).filter(Boolean);
 }
 
@@ -108,7 +110,7 @@ export function MedicineDescription({ cis, cip13 }) {
     <div class="card"><div class="row"><div class="main">
       ${indications
         ? html`${english ? html`<p class="sub" style="margin:0 0 6px">${T("", "(official text, in French)")}</p>` : ""}
-               ${bullets(indications).map((b) => html`<div class=${b.bullet ? "bullet" : "para"}>${b.line}</div>`)}`
+               ${bullets(indications).map((b) => html`<div class=${b.bullet ? "bullet" : b.sub ? "bullet sub" : "para"}>${b.line}</div>`)}`
         : html`<span class="sub">${T("Pas encore disponible : ouvrez ce médicament une fois dans l'app iPhone pour le charger.",
                                       "Not available yet: open this medicine once in the iPhone app to load it.")}</span>`}
     </div></div></div>

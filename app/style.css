@@ -125,6 +125,8 @@ button { font: inherit; color: inherit; }
 .right { text-align: right; }
 .bullet { padding-left: 16px; position: relative; margin: 4px 0; }
 .bullet::before { content: "•"; position: absolute; left: 2px; color: var(--muted); }
+.bullet.sub { margin-left: 18px; }
+.bullet.sub::before { content: "◦"; }
 .para { margin: 4px 0; }
 
 /* --- History (update 023) and as-needed --- */
