@@ -132,7 +132,7 @@ export function Spending({ onClose }) {
           <span>${mp.length ? T(`payé ${euros(sum(mp, (p) => p.amount))}`, `paid ${euros(sum(mp, (p) => p.amount))}`) : T(`reste ≈ ${euros(rest)}`, `left ≈ ${euros(rest)}`)}</span></div>
         <div class="card">
           ${ml.map((l) => html`<div class="row"><span class="hist-icon">${l.source === "inventory" ? "📦" : "💊"}</span>
-            <div class="main"><div class="name">${l.name || "?"}</div><div class="sub">${detail(l)}</div></div>
+            <div class="main"><div class="name">${l.name || "?"}</div>${l.brands && l.brands !== l.name ? html`<div class="sub">${l.brands}</div>` : ""}<div class="sub">${detail(l)}</div></div>
             <div class="right">${l.value != null ? html`<div>${euros(l.value)}</div><div class="sub">${T("reste", "left")} ${euros(l.value - l.insurance_share)}</div>` : html`<div class="sub">${T("prix inconnu", "no price")}</div>`}</div></div>`)}
           ${mp.map((p) => html`<div class="row"><span class="hist-icon green">€</span>
             <div class="main"><div class="name">${T("Payé le", "Paid on")} ${short(parseDay(p.paid_on))}</div>${p.note ? html`<div class="sub">${p.note}</div>` : ""}</div>
