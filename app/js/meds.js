@@ -127,7 +127,8 @@ export function Inventory({ search }) {
   if (!items) return html`<${ErrorBox} error=${error} /><div class="empty">…</div>`;
   const q = search.trim().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
   const fold = (s) => (s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
-  const shown = items.filter((i) => Number(i.total_units) > 0 || i.lot_count > 0)
+  const archived = items.filter((i) => i.archived_at);
+  const shown = items.filter((i) => !i.archived_at && (Number(i.total_units) > 0 || i.lot_count > 0))
     .filter((i) => !q || fold(i.name).includes(q) || (i.active_substances || []).some((s) => fold(s).includes(q)) || (i.cip13 || "").includes(q));
 
   return html`
@@ -143,6 +144,10 @@ export function Inventory({ search }) {
           </div>
           <span class="chev">›</span>
         </button>`)}</div>`}
+    ${archived.length && !q ? html`<details class="archived"><summary class="section-title">${T(`Archivés (${archived.length})`, `Archived (${archived.length})`)}</summary>
+      <div class="card">${archived.map((i) => html`<button class="row rowbtn" onClick=${() => setOpen(i)}>
+        <div class="main sub">${i.name}</div><span class="chev">›</span></button>`)}</div>
+      <p class="note indent">${T("Plus à la maison, mais toujours comptés dans Mes dépenses en pharmacie.", "No longer at home, but still counted in My pharmacy spending.")}</p></details>` : ""}
     ${open && html`<${InventoryItem} item=${open} onClose=${() => { setOpen(null); load(); }} />`}`;
 }
 
@@ -157,6 +162,12 @@ function InventoryItem({ item, onClose }) {
   const [error, setError] = useState(null);
   const [ald, setAld] = useState(!!item.ald);
   const perBox = Math.max(item.units_per_box || 1, 1);
+
+  // Archive (update 028): off the list and alerts, still in Mes dépenses
+  async function setArchived(on) {
+    const { error } = await supabase.from("inventory_items").update({ archived_at: on ? new Date().toISOString() : null }).eq("id", item.id);
+    if (error) setError(message(error)); else onClose();
+  }
 
   // ALD switch (update 027): counts at 100 % in Mes dépenses
   async function toggleAld() {
@@ -199,6 +210,13 @@ function InventoryItem({ item, onClose }) {
     <p class="note indent">${item.ald_via_treatment ? T("Un de vos traitements en ALD utilise ce médicament.", "One of your ALD treatments uses this medicine.")
       : T("Sert à estimer vos dépenses en pharmacie (sauf médicaments remboursés à 15 %).", "Used to estimate your pharmacy spending (except medicines reimbursed at 15%).")}</p>
     <${MedicineDescription} cis=${item.cis_code} cip13=${item.cip13} />
+    <div class="card" style="margin-top:18px">
+      <button class="row rowbtn" onClick=${() => setArchived(!item.archived_at)}><div class="main left name" style="color:var(--accent)">
+        ${item.archived_at ? T("Remettre dans l'inventaire", "Put back in the inventory") : T("Archiver (plus à la maison)", "Archive (no longer at home)")}</div></button>
+    </div>
+    <p class="note indent">${item.archived_at
+      ? T("Archivé : hors de la liste et des alertes, mais toujours compté dans Mes dépenses. Une nouvelle boîte le remet dans l'inventaire.", "Archived: off the list and alerts, but still counted in My spending. A new box puts it back in the inventory.")
+      : T("Archiver : le médicament quitte la liste et les alertes de péremption, mais reste compté dans Mes dépenses.", "Archive: the medicine leaves the list and expiry alerts, but stays counted in My spending.")}</p>
     ${removing && html`<${RemoveLot} lot=${removing} perBox=${perBox} onClose=${() => { setRemoving(null); load(); }} />`}
   </${Sheet}>`;
 }

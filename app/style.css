@@ -154,3 +154,6 @@ button { font: inherit; color: inherit; }
 .green { color: var(--green); }
 .iconbtn { width: 44px; height: 44px; border-radius: 50%; border: 0; background: var(--line); cursor: pointer; display: grid; place-items: center; flex: none; padding: 0; }
 .iconbtn svg { width: 22px; height: 22px; }
+.archived summary { cursor: pointer; list-style: none; }
+.archived summary::before { content: "▸ "; }
+.archived[open] summary::before { content: "▾ "; }
