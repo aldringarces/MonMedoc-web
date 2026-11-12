@@ -34,7 +34,10 @@ function SignIn() {
     setBusy(true); setError(null);
     const { error } = await supabase.auth.signInWithOtp({ email: email.trim(), options: { emailRedirectTo: location.origin + location.pathname } });
     setBusy(false);
-    if (error) setError(message(error)); else setSent(true);
+    // The mail server is slow: Supabase gives up after 10 s ("Load failed",
+    // 504) although the email still goes out. Show the code screen anyway.
+    const slow = error && (error.name === "AuthRetryableFetchError" || !error.status || error.status >= 500);
+    if (error && !slow) setError(message(error)); else setSent(true);
   }
   async function verify(e) {
     e.preventDefault();
@@ -55,8 +58,8 @@ function SignIn() {
                value=${email} onInput=${(e) => setEmail(e.target.value)} autocomplete="email" />
         <button class="primary" disabled=${busy || !email}>${T("Recevoir un lien de connexion", "Send me a sign-in link")}</button>
       </form>` : html`
-      <p class="sub">${T(`Un e-mail a été envoyé à ${email}. Ouvrez-le sur cet appareil et touchez le lien.`,
-                         `An email was sent to ${email}. Open it on this device and tap the link.`)}</p>
+      <p class="sub">${T(`Un e-mail a été envoyé à ${email} (il peut mettre une minute). Ouvrez-le sur cet appareil et touchez le lien, ou tapez le code.`,
+                         `An email was sent to ${email} (it can take a minute). Open it on this device and tap the link, or type the code.`)}</p>
       <form onSubmit=${verify}>
         <input class="field" inputmode="numeric" placeholder=${T("…ou entrez le code reçu", "…or enter the code you received")}
                value=${code} onInput=${(e) => setCode(e.target.value)} />
