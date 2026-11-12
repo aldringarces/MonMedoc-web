@@ -1,0 +1,12 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": ["5BQ2257DYB.com.kalatas.MonMedoc"],
+        "components": [
+          { "/": "/rejoindre*", "comment": "MonMédoc profile invitations" }
+        ]
+      }
+    ]
+  }
+}

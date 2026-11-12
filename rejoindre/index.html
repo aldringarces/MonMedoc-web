@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Invitation MonMédoc</title>
+<style>
+  :root { --accent: #128C7E; --text: #1c1c1e; --muted: #6b6b70; --bg: #f2f2f7; --card: #fff; }
+  @media (prefers-color-scheme: dark) { :root { --text: #f2f2f7; --muted: #a1a1a6; --bg: #000; --card: #1c1c1e; } }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 17px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: var(--bg); color: var(--text); }
+  main { max-width: 440px; margin: 0 auto; padding: 48px 20px; text-align: center; }
+  .card { background: var(--card); border-radius: 22px; padding: 28px 22px; }
+  h1 { font-size: 24px; margin: 0 0 8px; }
+  p { color: var(--muted); margin: 8px 0; }
+  .code { font: 700 40px/1.2 ui-monospace, Menlo, monospace; letter-spacing: 6px; margin: 18px 0; color: var(--text); }
+  a.button { display: block; background: var(--accent); color: #fff; text-decoration: none; font-weight: 600; padding: 15px; border-radius: 14px; margin-top: 18px; }
+  .steps { text-align: left; margin-top: 22px; font-size: 15px; color: var(--muted); }
+  .steps li { margin: 6px 0; }
+</style>
+</head>
+<body>
+<main>
+  <div class="card">
+    <h1 data-fr="Invitation MonMédoc" data-en="MonMédoc invitation">Invitation MonMédoc</h1>
+    <p data-fr="Quelqu'un vous invite à partager un profil : vous verrez les mêmes traitements et prises."
+       data-en="Someone is inviting you to share a profile: you'll see the same treatments and doses.">Quelqu'un vous invite à partager un profil : vous verrez les mêmes traitements et prises.</p>
+    <div class="code" id="code">——————</div>
+    <a class="button" id="open" href="monmedoc://rejoindre" data-fr="Ouvrir dans MonMédoc" data-en="Open in MonMédoc">Ouvrir dans MonMédoc</a>
+    <ol class="steps">
+      <li data-fr="Installez MonMédoc sur votre iPhone (demandez le lien à la personne qui vous invite)."
+          data-en="Install MonMédoc on your iPhone (ask the person inviting you for the link).">Installez MonMédoc sur votre iPhone (demandez le lien à la personne qui vous invite).</li>
+      <li data-fr="Connectez-vous avec votre compte Apple."
+          data-en="Sign in with your Apple account.">Connectez-vous avec votre compte Apple.</li>
+      <li data-fr="Touchez à nouveau le lien, ou : Réglages › Profils › Rejoindre avec un code."
+          data-en="Tap the link again, or: Settings › Profiles › Join with a code.">Touchez à nouveau le lien, ou : Réglages › Profils › Rejoindre avec un code.</li>
+    </ol>
+    <p style="font-size:14px" data-fr="Code valable 7 jours, une seule fois." data-en="Code valid 7 days, once.">Code valable 7 jours, une seule fois.</p>
+  </div>
+</main>
+<script>
+  // Code from ?code=ABC123 (letters and digits only)
+  var code = (new URLSearchParams(location.search).get("code") || "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 6);
+  if (code) {
+    document.getElementById("code").textContent = code;
+    document.getElementById("open").href = "monmedoc://rejoindre?code=" + code;
+  }
+  // English if the phone isn't in French
+  if (!(navigator.language || "fr").toLowerCase().startsWith("fr")) {
+    document.documentElement.lang = "en";
+    document.title = "MonMédoc invitation";
+    document.querySelectorAll("[data-en]").forEach(function (el) { el.textContent = el.getAttribute("data-en"); });
+  }
+</script>
+</body>
+</html>
