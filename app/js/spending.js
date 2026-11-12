@@ -5,6 +5,26 @@ import { useState, useEffect } from "https://esm.sh/preact@10.24.3/hooks";
 import { html, supabase, T, locale, clean, parseDay, message } from "./lib.js";
 import { Sheet, ErrorBox } from "./components.js";
 
+// Same as Duplicates.swift: the ingredient without its salt
+// ("FUMARATE DE QUÉTIAPINE" → "quetiapine")
+const SALTS = new Set(["besilate", "chlorhydrate", "hydrochloride", "maleate", "tartrate", "fumarate", "succinate",
+  "sodique", "potassique", "calcique", "magnesique", "sel", "base", "acide", "mesilate", "citrate", "sulfate",
+  "phosphate", "acetate", "bromhydrate", "hemifumarate", "sodium", "potassium", "monohydrate", "dihydrate",
+  "trihydrate", "sesquihydrate", "anhydre"]);
+const fold = (s) => (s || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+function substanceKey(substance) {
+  const words = fold(substance).split(/[^a-z]+/).filter((w) => w.length >= 3 && !SALTS.has(w) && w !== "des");
+  return words[0] || fold(substance);
+}
+function labelOf(substance, key) {
+  const word = (substance.split(/[^A-Za-zÀ-ÿ]+/).find((w) => fold(w) === key) || key).toLowerCase();
+  return word.charAt(0).toUpperCase() + word.slice(1);
+}
+const keysOf = (l) => {
+  const keys = [...new Set((l.active_substances || []).map(substanceKey))];
+  return keys.length ? keys : ["name:" + (l.name || "?")];
+};
+
 const euros = (n) => Number(n || 0).toLocaleString(locale, { style: "currency", currency: "EUR" });
 const short = (d) => d.toLocaleDateString(locale, { day: "numeric", month: "short" });
 
@@ -40,12 +60,22 @@ export function Spending({ onClose }) {
   }
 
   if (!lines) return html`<${Sheet} title=${T("Dépenses en pharmacie", "Pharmacy spending")} onClose=${onClose}><div class="empty">…</div><//>`;
-  const names = [...new Set(lines.map((l) => l.name).filter(Boolean))].sort((a, b) => a.localeCompare(b));
-  const keep = (name) => !filter.length || filter.includes(name);
-  const toggle = (name) => setFilter(filter.includes(name) ? filter.filter((n) => n !== name) : [...filter, name]);
-  const yl = lines.filter((l) => parseDay(l.day).getFullYear() === year && keep(l.name));
-  // With a filter, only payments noted for those medicines
-  const yp = payments.filter((p) => parseDay(p.paid_on).getFullYear() === year && keep(p.note));
+  // Ingredients: key → label and the medicines it covers
+  const options = {};
+  for (const l of lines) {
+    for (const key of keysOf(l)) {
+      const sub = (l.active_substances || []).find((x) => substanceKey(x) === key);
+      options[key] ||= { key, label: sub ? labelOf(sub, key) : l.name, names: new Set() };
+      options[key].names.add(l.name);
+    }
+  }
+  const list = Object.values(options).sort((a, b) => a.label.localeCompare(b.label));
+  const keep = (l) => !filter.length || keysOf(l).some((k) => filter.includes(k));
+  const toggle = (key) => setFilter(filter.includes(key) ? filter.filter((k) => k !== key) : [...filter, key]);
+  const chosenNames = new Set(lines.filter(keep).map((l) => l.name));
+  const yl = lines.filter((l) => parseDay(l.day).getFullYear() === year && keep(l));
+  // With a filter, only payments noted for a medicine with those ingredients
+  const yp = payments.filter((p) => parseDay(p.paid_on).getFullYear() === year && (!filter.length || chosenNames.has(p.note)));
   const sum = (arr, f) => arr.reduce((s, x) => s + Number(f(x) || 0), 0);
   const value = sum(yl, (l) => l.value), insurance = sum(yl, (l) => l.insurance_share);
   const years = [...new Set([thisYear, ...lines.map((l) => parseDay(l.day).getFullYear()), ...payments.map((p) => parseDay(p.paid_on).getFullYear())])].sort((a, b) => b - a);
@@ -64,14 +94,15 @@ export function Spending({ onClose }) {
   return html`<${Sheet} title=${T("Dépenses en pharmacie", "Pharmacy spending")} onClose=${onClose}>
     <${ErrorBox} error=${error} />
     <div class="card form">
-      <button class="row rowbtn" onClick=${() => setChoosing(!choosing)}><div class="main left">${T("Médicaments", "Medicines")}</div>
-        <div class="sub">${!filter.length ? T("Tous", "All") : filter.length === 1 ? filter[0] : T(`${filter.length} médicaments`, `${filter.length} medicines`)}</div>
+      <button class="row rowbtn" onClick=${() => setChoosing(!choosing)}><div class="main left">${T("Substance active", "Active ingredient")}</div>
+        <div class="sub">${!filter.length ? T("Toutes", "All") : filter.length === 1 ? (options[filter[0]] || {}).label : T(`${filter.length} substances`, `${filter.length} ingredients`)}</div>
         <span class="chev">${choosing ? "▾" : "›"}</span></button>
       ${choosing && html`
         <label class="row"><input type="checkbox" checked=${!filter.length} onChange=${() => setFilter([])} style="width:20px;height:20px;accent-color:var(--accent)" />
-          <div class="main">${T("Tous les médicaments", "All medicines")}</div></label>
-        ${names.map((n) => html`<label class="row"><input type="checkbox" checked=${filter.includes(n)} onChange=${() => toggle(n)}
-          style="width:20px;height:20px;accent-color:var(--accent)" /><div class="main">${n}</div></label>`)}`}
+          <div class="main">${T("Toutes les substances", "All ingredients")}</div></label>
+        ${list.map((o) => html`<label class="row"><input type="checkbox" checked=${filter.includes(o.key)} onChange=${() => toggle(o.key)}
+          style="width:20px;height:20px;accent-color:var(--accent)" /><div class="main"><div>${o.label}</div>
+          <div class="sub">${[...o.names].sort().join(", ")}</div></div></label>`)}`}
       <div class="row"><div class="main">${T("Année", "Year")}</div>
         <select value=${year} onChange=${(e) => setYear(Number(e.target.value))}>${years.map((y) => html`<option value=${y}>${y}</option>`)}</select></div>
       <div class="row"><div class="main">${T("Valeur des boîtes reçues", "Value of boxes received")}</div><div class="sub">${euros(value)}</div></div>
