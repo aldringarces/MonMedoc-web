@@ -155,7 +155,16 @@ function InventoryItem({ item, onClose }) {
   const [lots, setLots] = useState(null);
   const [removing, setRemoving] = useState(null);
   const [error, setError] = useState(null);
+  const [ald, setAld] = useState(!!item.ald);
   const perBox = Math.max(item.units_per_box || 1, 1);
+
+  // ALD switch (update 027): counts at 100 % in Mes dépenses
+  async function toggleAld() {
+    const on = !ald;
+    setAld(on);
+    const { error } = await supabase.from("inventory_items").update({ ald: on }).eq("id", item.id);
+    if (error) { setAld(!on); setError(message(error)); }
+  }
 
   async function load() {
     const { data, error } = await supabase.from("inventory_lot_list").select().eq("item_id", item.id).gt("quantity", 0);
@@ -182,6 +191,13 @@ function InventoryItem({ item, onClose }) {
         <button onClick=${() => setRemoving(l)} aria-label=${T("Retirer", "Remove")}>−</button>
         <button onClick=${() => addBox(l)} aria-label=${T("Ajouter une boîte", "Add a box")}>+</button>
       </div></div>`)}</div>
+    <div class="section-title">${T("Dépenses", "Spending")}</div>
+    <div class="card form"><div class="row"><div class="main">${T("ALD (pris en charge à 100 %)", "ALD (covered at 100%)")}</div>
+      ${item.ald_via_treatment
+        ? html`<div class="sub">${T("Oui, par le traitement", "Yes, via the treatment")}</div>`
+        : html`<input type="checkbox" checked=${ald} onChange=${toggleAld} style="width:22px;height:22px;accent-color:var(--accent)" />`}</div></div>
+    <p class="note indent">${item.ald_via_treatment ? T("Un de vos traitements en ALD utilise ce médicament.", "One of your ALD treatments uses this medicine.")
+      : T("Sert à estimer vos dépenses en pharmacie (sauf médicaments remboursés à 15 %).", "Used to estimate your pharmacy spending (except medicines reimbursed at 15%).")}</p>
     <${MedicineDescription} cis=${item.cis_code} cip13=${item.cip13} />
     ${removing && html`<${RemoveLot} lot=${removing} perBox=${perBox} onClose=${() => { setRemoving(null); load(); }} />`}
   </${Sheet}>`;
