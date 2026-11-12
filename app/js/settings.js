@@ -5,6 +5,7 @@ import { useState, useEffect } from "https://esm.sh/preact@10.24.3/hooks";
 import { html, supabase, T, languageSetting, setLanguage, profileName, menuName, detailsTitle, inviteLink, message } from "./lib.js";
 import { Avatar, Sheet, ErrorBox } from "./components.js";
 import { PrescriptionFiles } from "./meds.js";
+import { Spending } from "./spending.js";
 
 export function Settings({ session, profiles, active, onSwitch, reload, openDetails, setOpenDetails }) {
   const [sheet, setSheet] = useState(null);   // "profiles" | "doctors" | "pharmacies"
@@ -31,12 +32,15 @@ export function Settings({ session, profiles, active, onSwitch, reload, openDeta
       </button>
     </div>
 
-    <div class="section-title">${T("Carnet", "Address book")}</div>
+    <div class="section-title">${T("Mon dossier santé", "My health records")}</div>
     <div class="card">
       <button class="row rowbtn" onClick=${() => setSheet("doctors")}><div class="main name">${T("Mes médecins", "My doctors")}</div><span class="chev">›</span></button>
       <button class="row rowbtn" onClick=${() => setSheet("pharmacies")}><div class="main name">${T("Mes pharmacies", "My pharmacies")}</div><span class="chev">›</span></button>
       <button class="row rowbtn" onClick=${() => setSheet("prescriptions")}><div class="main name">${T("Mes ordonnances", "My prescriptions")}</div><span class="chev">›</span></button>
+      <button class="row rowbtn" onClick=${() => setSheet("spending")}><div class="main name">${T("Mes dépenses en pharmacie", "My pharmacy spending")}</div><span class="chev">›</span></button>
     </div>
+    <p class="note indent">${T("Vos médecins et pharmacies, vos ordonnances et ce que vous avez dépensé, pour le profil affiché.",
+                              "Your doctors and pharmacies, your prescriptions and what you've spent, for the profile shown.")}</p>
 
     <div class="section-title">${T("Compte", "Account")}</div>
     <div class="card">
@@ -49,6 +53,7 @@ export function Settings({ session, profiles, active, onSwitch, reload, openDeta
     ${(sheet === "doctors" || sheet === "pharmacies") && html`<${PlacesSheet} kind=${sheet} onClose=${() => setSheet(null)} />`}
     ${sheet === "prescriptions" && html`<${Sheet} title=${T("Mes ordonnances", "My prescriptions")} onClose=${() => setSheet(null)}>
         <${PrescriptionFiles} all=${true} /><//>`}
+    ${sheet === "spending" && html`<${Spending} onClose=${() => setSheet(null)} />`}
     ${openDetails && html`<${DetailsSheet} active=${active} reload=${reload} onClose=${() => setOpenDetails(false)} />`}`;
 }
 

@@ -3,7 +3,6 @@
 import { useState, useEffect } from "https://esm.sh/preact@10.24.3/hooks";
 import { html, supabase, T, clean, parseDay, dayText, longDay, startOfToday, addDays, timeOf, message } from "./lib.js";
 import { shortageTitle } from "./meds.js";
-import { Spending } from "./spending.js";
 
 // Pharmacy days chosen in the app (default Monday, Wednesday, Friday; 2 days before the last pill)
 const ALLOWED = new Set([1, 3, 5]);   // JS: 0 = Sunday
@@ -72,7 +71,6 @@ export function FollowUp({ meds, shortages, onSummary }) {
   const [appointments, setAppointments] = useState(null);
   const [lots, setLots] = useState([]);
   const [error, setError] = useState(null);
-  const [showSpending, setShowSpending] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -150,8 +148,5 @@ export function FollowUp({ meds, shortages, onSummary }) {
 
   blocks.sort((a, b) => a[0] - b[0]);
   return html`${error && html`<div class="error">${error}</div>`}
-    ${blocks.length ? blocks.map((b) => b[1]) : html`<div class="empty">${T("Tout est en ordre. Rien à suivre pour le moment.", "All good. Nothing to follow up right now.")}</div>`}
-    <div class="card" style="margin-top:18px"><button class="row rowbtn" onClick=${() => setShowSpending(true)}>
-      <span class="hist-icon">€</span><div class="main left name">${T("Dépenses en pharmacie", "Pharmacy spending")}</div><span class="chev">›</span></button></div>
-    ${showSpending && html`<${Spending} onClose=${() => setShowSpending(false)} />`}`;
+    ${blocks.length ? blocks.map((b) => b[1]) : html`<div class="empty">${T("Tout est en ordre. Rien à suivre pour le moment.", "All good. Nothing to follow up right now.")}</div>`}`;
 }
