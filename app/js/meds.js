@@ -4,6 +4,15 @@ import { html, supabase, T, shortTime, clean, parseDay, dayText, startOfToday, a
 import { Sheet, ErrorBox } from "./components.js";
 import { loadIndications, purposeOf, Purpose, MedicineDescription } from "./info.js";
 
+/// "08:00 · 20:00", or "Si besoin · max 3 par jour · 4 h entre 2 prises" (update 023)
+function whenText(m) {
+  if (!m.as_needed) return (m.dose_times || []).map(shortTime).join(" · ");
+  let text = T("Si besoin", "As needed");
+  if (m.max_doses_per_day) text += T(` · max ${m.max_doses_per_day} par jour`, ` · max ${m.max_doses_per_day} a day`);
+  if (m.min_hours_between) text += T(` · ${clean(m.min_hours_between)} h entre 2 prises`, ` · ${clean(m.min_hours_between)} h apart`);
+  return text;
+}
+
 // ---------- Traitements ----------
 export function Treatments({ meds, shortages, indications }) {
   const [open, setOpen] = useState(null);
@@ -14,7 +23,7 @@ export function Treatments({ meds, shortages, indications }) {
     return html`<button class="row rowbtn" onClick=${() => setOpen(m)}><div class="main">
       <div class="name">${m.display_name}</div>
       <${Purpose} text=${purposeOf(m.purpose, m.cis_code, indications)} />
-      <div class="sub">${clean(m.units_per_dose)} × ${(m.dose_times || []).map(shortTime).join(" · ")}</div>
+      <div class="sub">${clean(m.units_per_dose)} × ${whenText(m)}</div>
       <div class="sub">${T(`${clean(m.current_stock)} restant(s)`, `${clean(m.current_stock)} left`)}${m.days_of_stock_left != null ? ` · ${m.days_of_stock_left} ${T("j", "d")}` : ""}${m.prescription_end_date ? ` · ${T("jusqu'au", "until")} ${dayText(parseDay(m.prescription_end_date))}` : ""}</div>
       <div class="badges">
         ${m.low_stock && html`<span class="badge low">${T("Stock bas", "Low stock")}</span>`}
@@ -32,7 +41,7 @@ function TreatmentSheet({ med: m, onClose }) {
     <div class="section-title">${T("Traitement", "Treatment")}</div>
     <div class="card">
       ${m.purpose && html`<div class="row"><div class="sub label">${T("Pour", "For")}</div><div class="main right">${m.purpose}</div></div>`}
-      <div class="row"><div class="sub label">${T("Prise", "Dose")}</div><div class="main right">${clean(m.units_per_dose)} × ${(m.dose_times || []).map(shortTime).join(" · ")}${m.logging_mode === "automatic" ? T(" (auto)", " (auto)") : ""}</div></div>
+      <div class="row"><div class="sub label">${T("Prise", "Dose")}</div><div class="main right">${clean(m.units_per_dose)} × ${whenText(m)}${m.logging_mode === "automatic" ? T(" (auto)", " (auto)") : ""}</div></div>
       <div class="row"><div class="sub label">${T("Stock", "Supply")}</div><div class="main right">${clean(m.current_stock)}${m.days_of_stock_left != null ? ` · ${m.days_of_stock_left} ${T("j", "d")}` : ""}</div></div>
       ${m.start_date && html`<div class="row"><div class="sub label">${T("Ordonnance", "Prescription")}</div><div class="main right">${T("depuis le", "since")} ${dayText(parseDay(m.start_date))}${m.prescription_end_date ? html`<br />${T("jusqu'au", "until")} ${dayText(parseDay(m.prescription_end_date))}` : ""}</div></div>`}
       ${Number(m.units_outstanding) > 0 && html`<div class="row"><div class="sub label">${T("Pharmacie", "Pharmacy")}</div><div class="main right">${T(`doit encore ${clean(m.units_outstanding)}`, `still owes ${clean(m.units_outstanding)}`)}${m.pharmacy_name ? html`<br />${m.pharmacy_name}` : ""}</div></div>`}

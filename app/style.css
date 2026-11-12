@@ -126,3 +126,31 @@ button { font: inherit; color: inherit; }
 .bullet { padding-left: 16px; position: relative; margin: 4px 0; }
 .bullet::before { content: "•"; position: absolute; left: 2px; color: var(--muted); }
 .para { margin: 4px 0; }
+
+/* --- History (update 023) and as-needed --- */
+.asneeded-icon { width: 30px; text-align: center; font-size: 22px; flex: none; }
+.cal { padding: 10px 12px 12px; }
+.cal-bar { display: flex; align-items: center; justify-content: space-between; text-transform: capitalize; margin-bottom: 8px; }
+.cal-bar button:disabled { opacity: .3; cursor: default; }
+.cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; text-align: center; }
+.cal-wd { color: var(--muted); font-size: 12px; font-weight: 600; text-transform: uppercase; }
+.cal-day { position: relative; border: 2px solid transparent; background: none; border-radius: 50%; aspect-ratio: 1; max-width: 42px; width: 100%;
+  margin: 0 auto; cursor: pointer; font-size: 15px; font-variant-numeric: tabular-nums; padding: 0; }
+.cal-day.future { color: var(--muted); }
+.cal-day.all { background: var(--green); color: #fff; }
+.cal-day.some { background: var(--orange); color: #fff; }
+.cal-day.none { background: var(--red); color: #fff; }
+.cal-day.pending { background: #0a84ff; color: #fff; }
+.cal-day.today { border-color: var(--accent); }
+.cal-day.sel { border-color: var(--text); font-weight: 700; }
+.cal-day i { position: absolute; left: 50%; bottom: -4px; width: 5px; height: 5px; margin-left: -2.5px; border-radius: 50%; background: #30b0c7; }
+.cal-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; margin-top: 10px; font-size: 12px; }
+.dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: -6px; }
+.dot.all { background: var(--green); } .dot.some { background: var(--orange); } .dot.none { background: var(--red); }
+.dot.asn { background: #30b0c7; width: 6px; height: 6px; }
+.progress > div.warn { background: var(--orange); }
+.progress > div.bad { background: var(--red); }
+.hist-icon { width: 26px; text-align: center; font-size: 18px; font-weight: 700; flex: none; }
+.green { color: var(--green); }
+.iconbtn { width: 44px; height: 44px; border-radius: 50%; border: 0; background: var(--line); cursor: pointer; display: grid; place-items: center; flex: none; padding: 0; }
+.iconbtn svg { width: 22px; height: 22px; }

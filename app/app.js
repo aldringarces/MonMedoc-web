@@ -8,6 +8,7 @@ import { useState, useEffect } from "https://esm.sh/preact@10.24.3/hooks";
 import { html, supabase, T, tz, profileName, message } from "./js/lib.js";
 import { ProfileMenu, ErrorBox } from "./js/components.js";
 import { Today } from "./js/today.js";
+import { History } from "./js/history.js";
 import { Treatments, Inventory, loadShortages } from "./js/meds.js";
 import { loadIndications } from "./js/info.js";
 import { FollowUp } from "./js/followup.js";
@@ -79,6 +80,7 @@ function Main({ session }) {
   const [indications, setIndications] = useState({});
   const [summary, setSummary] = useState("");
   const [openDetails, setOpenDetails] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
   const [error, setError] = useState(null);
   const active = profiles.find((p) => p.is_active);
 
@@ -135,14 +137,16 @@ function Main({ session }) {
     await loadData().catch(() => {});
   }
 
-  const taken = (doses || []).filter((d) => d.status === "taken").length;
+  // "Si besoin" doses aren't planned: they don't count in the progress
+  const planned = (doses || []).filter((d) => !d.as_needed);
+  const taken = planned.filter((d) => d.status === "taken").length;
   const titles = { today: T("Aujourd'hui", "Today"), meds: T("Médicaments", "Medicines"), followup: T("Suivi", "Follow-up"), settings: T("Réglages", "Settings") };
 
   // One line under every title, same height on every tab
   const subline = {
-    today: doses && doses.length
-      ? html`<div class="progress"><div style=${`width:${(100 * taken) / doses.length}%`}></div></div>
-             <span>${T(`${taken}/${doses.length} prises`, `${taken}/${doses.length} taken`)}</span>`
+    today: planned.length
+      ? html`<div class="progress"><div style=${`width:${(100 * taken) / planned.length}%`}></div></div>
+             <span>${T(`${taken}/${planned.length} prises`, `${taken}/${planned.length} taken`)}</span>`
       : html`<span>${T("Aucune prise prévue", "No doses planned")}</span>`,
     meds: html`<div class="segmented">
       <button class=${medsView === "treatments" ? "on" : ""} onClick=${() => setMedsView("treatments")}>${T("Traitements", "Treatments")}</button>
@@ -155,6 +159,9 @@ function Main({ session }) {
     <div class="header">
       <div class="header-row">
         <h1>${titles[tab]}</h1>
+        ${tab === "today" && html`<button class="iconbtn" onClick=${() => setShowHistory(true)} title=${T("Historique des prises", "Dose history")}
+            aria-label=${T("Historique des prises", "Dose history")}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+            stroke-linecap="round"><rect x="3.5" y="5" width="17" height="15" rx="2.5" /><path d="M3.5 10h17M8 3v4M16 3v4" /></svg></button>`}
         <${ProfileMenu} profiles=${profiles} active=${active} onSwitch=${switchTo} onManage=${() => setTab("settings")} />
       </div>
       <div class="header-sub">${subline}</div>
@@ -163,7 +170,9 @@ function Main({ session }) {
     </div>
     <${ErrorBox} error=${error} />
     ${active && !active.is_self && tab !== "settings" && html`<p class="sub indent">${T("Profil affiché :", "Profile shown:")} ${profileName(active)}</p>`}
-    ${tab === "today" && html`<${Today} doses=${doses} meds=${meds} indications=${indications} onToggle=${toggle} />`}
+    ${tab === "today" && html`<${Today} doses=${doses} meds=${meds} indications=${indications} onToggle=${toggle}
+        onChanged=${() => loadData().catch((e) => setError(message(e)))} onError=${setError} />`}
+    ${showHistory && html`<${History} onClose=${() => setShowHistory(false)} onChanged=${() => loadData().catch(() => {})} />`}
     ${tab === "meds" && (medsView === "treatments" ? html`<${Treatments} meds=${meds} shortages=${shortages} indications=${indications} />` : html`<${Inventory} key=${active && active.id} search=${search} />`)}
     ${tab === "followup" && html`<${FollowUp} key=${active && active.id} meds=${meds} shortages=${shortages} onSummary=${setSummary} />`}
     ${tab === "settings" && html`<${Settings} session=${session} profiles=${profiles} active=${active} onSwitch=${switchTo}
