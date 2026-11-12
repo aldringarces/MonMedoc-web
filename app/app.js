@@ -9,6 +9,7 @@ import { html, supabase, T, tz, profileName, message } from "./js/lib.js";
 import { ProfileMenu, ErrorBox } from "./js/components.js";
 import { Today } from "./js/today.js";
 import { Treatments, Inventory, loadShortages } from "./js/meds.js";
+import { loadIndications } from "./js/info.js";
 import { FollowUp } from "./js/followup.js";
 import { Settings } from "./js/settings.js";
 
@@ -75,6 +76,7 @@ function Main({ session }) {
   const [doses, setDoses] = useState(null);
   const [meds, setMeds] = useState(null);
   const [shortages, setShortages] = useState({});
+  const [indications, setIndications] = useState({});
   const [summary, setSummary] = useState("");
   const [openDetails, setOpenDetails] = useState(false);
   const [error, setError] = useState(null);
@@ -94,7 +96,9 @@ function Main({ session }) {
     if (m.error) throw m.error;
     setDoses(d.data);
     setMeds(m.data);
-    setShortages(await loadShortages(m.data));
+    const [sh, ind] = await Promise.all([loadShortages(m.data), loadIndications(m.data.map((x) => x.cis_code))]);
+    setShortages(sh);
+    setIndications(ind);
   }
   async function loadAll() {
     setError(null);
@@ -159,8 +163,8 @@ function Main({ session }) {
     </div>
     <${ErrorBox} error=${error} />
     ${active && !active.is_self && tab !== "settings" && html`<p class="sub indent">${T("Profil affiché :", "Profile shown:")} ${profileName(active)}</p>`}
-    ${tab === "today" && html`<${Today} doses=${doses} onToggle=${toggle} />`}
-    ${tab === "meds" && (medsView === "treatments" ? html`<${Treatments} meds=${meds} shortages=${shortages} />` : html`<${Inventory} key=${active && active.id} search=${search} />`)}
+    ${tab === "today" && html`<${Today} doses=${doses} meds=${meds} indications=${indications} onToggle=${toggle} />`}
+    ${tab === "meds" && (medsView === "treatments" ? html`<${Treatments} meds=${meds} shortages=${shortages} indications=${indications} />` : html`<${Inventory} key=${active && active.id} search=${search} />`)}
     ${tab === "followup" && html`<${FollowUp} key=${active && active.id} meds=${meds} shortages=${shortages} onSummary=${setSummary} />`}
     ${tab === "settings" && html`<${Settings} session=${session} profiles=${profiles} active=${active} onSwitch=${switchTo}
         reload=${loadAll} openDetails=${openDetails} setOpenDetails=${setOpenDetails} />`}

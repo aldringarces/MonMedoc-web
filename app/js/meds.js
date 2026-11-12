@@ -2,16 +2,18 @@
 import { useState, useEffect } from "https://esm.sh/preact@10.24.3/hooks";
 import { html, supabase, T, shortTime, clean, parseDay, dayText, startOfToday, addDays, boxes, message } from "./lib.js";
 import { Sheet, ErrorBox } from "./components.js";
+import { loadIndications, purposeOf, Purpose, MedicineDescription } from "./info.js";
 
 // ---------- Traitements ----------
-export function Treatments({ meds, shortages }) {
+export function Treatments({ meds, shortages, indications }) {
+  const [open, setOpen] = useState(null);
   if (!meds) return html`<div class="empty">…</div>`;
   if (!meds.length) return html`<div class="empty">${T("Aucun traitement en cours.", "No current treatment.")}</div>`;
   return html`<div class="card" style="margin-top:12px">${meds.map((m) => {
     const shortage = shortages[m.id];
-    return html`<div class="row"><div class="main">
+    return html`<button class="row rowbtn" onClick=${() => setOpen(m)}><div class="main">
       <div class="name">${m.display_name}</div>
-      ${m.purpose && html`<div class="purpose">${m.purpose}</div>`}
+      <${Purpose} text=${purposeOf(m.purpose, m.cis_code, indications)} />
       <div class="sub">${clean(m.units_per_dose)} × ${(m.dose_times || []).map(shortTime).join(" · ")}</div>
       <div class="sub">${T(`${clean(m.current_stock)} restant(s)`, `${clean(m.current_stock)} left`)}${m.days_of_stock_left != null ? ` · ${m.days_of_stock_left} ${T("j", "d")}` : ""}${m.prescription_end_date ? ` · ${T("jusqu'au", "until")} ${dayText(parseDay(m.prescription_end_date))}` : ""}</div>
       <div class="badges">
@@ -20,8 +22,24 @@ export function Treatments({ meds, shortages }) {
         ${m.pharmacy_owes && html`<span class="badge owes">${T(`La pharmacie doit ${clean(m.units_outstanding)}`, `Pharmacy owes ${clean(m.units_outstanding)}`)}</span>`}
         ${m.rdv_due && html`<span class="badge rdv">${T("RDV à prendre", "Book appointment")}</span>`}
       </div>
-    </div></div>`;
-  })}</div>`;
+    </div><span class="chev">›</span></button>`;
+  })}</div>
+  ${open && html`<${TreatmentSheet} med=${open} onClose=${() => setOpen(null)} />`}`;
+}
+
+function TreatmentSheet({ med: m, onClose }) {
+  return html`<${Sheet} title=${m.display_name} onClose=${onClose}>
+    <div class="section-title">${T("Traitement", "Treatment")}</div>
+    <div class="card">
+      ${m.purpose && html`<div class="row"><div class="sub label">${T("Pour", "For")}</div><div class="main right">${m.purpose}</div></div>`}
+      <div class="row"><div class="sub label">${T("Prise", "Dose")}</div><div class="main right">${clean(m.units_per_dose)} × ${(m.dose_times || []).map(shortTime).join(" · ")}${m.logging_mode === "automatic" ? T(" (auto)", " (auto)") : ""}</div></div>
+      <div class="row"><div class="sub label">${T("Stock", "Supply")}</div><div class="main right">${clean(m.current_stock)}${m.days_of_stock_left != null ? ` · ${m.days_of_stock_left} ${T("j", "d")}` : ""}</div></div>
+      ${m.start_date && html`<div class="row"><div class="sub label">${T("Ordonnance", "Prescription")}</div><div class="main right">${T("depuis le", "since")} ${dayText(parseDay(m.start_date))}${m.prescription_end_date ? html`<br />${T("jusqu'au", "until")} ${dayText(parseDay(m.prescription_end_date))}` : ""}</div></div>`}
+      ${Number(m.units_outstanding) > 0 && html`<div class="row"><div class="sub label">${T("Pharmacie", "Pharmacy")}</div><div class="main right">${T(`doit encore ${clean(m.units_outstanding)}`, `still owes ${clean(m.units_outstanding)}`)}${m.pharmacy_name ? html`<br />${m.pharmacy_name}` : ""}</div></div>`}
+      ${m.doctor_name && html`<div class="row"><div class="sub label">${T("Médecin", "Doctor")}</div><div class="main right">${m.doctor_name}</div></div>`}
+    </div>
+    <${MedicineDescription} cis=${m.cis_code} cip13=${m.cip13} />
+  </${Sheet}>`;
 }
 
 export function shortageTitle(x) {
@@ -57,9 +75,12 @@ export function Inventory({ search }) {
   const [open, setOpen] = useState(null);
   const [error, setError] = useState(null);
 
+  const [indications, setIndications] = useState({});
   async function load() {
     const { data, error } = await supabase.from("inventory_summary").select();
-    if (error) setError(message(error)); else setItems(data);
+    if (error) { setError(message(error)); return; }
+    setItems(data);
+    setIndications(await loadIndications(data.map((i) => i.cis_code)));
   }
   useEffect(() => { load(); }, []);
 
@@ -76,6 +97,7 @@ export function Inventory({ search }) {
         <button class="row rowbtn" onClick=${() => setOpen(i)}>
           <div class="main">
             <div class="name">${i.name}</div>
+            <${Purpose} text=${purposeOf(null, i.cis_code, indications)} />
             ${(i.presentation || i.form) && html`<div class="sub">${i.presentation || i.form}</div>`}
             <div class="sub">${boxes(i.total_units, i.units_per_box)}${i.next_expiry ? html` · <span class=${expiryClass(i.next_expiry)}>${T("Exp.", "Exp.")} ${dayText(parseDay(i.next_expiry))}</span>` : ""}</div>
           </div>
@@ -120,6 +142,7 @@ function InventoryItem({ item, onClose }) {
         <button onClick=${() => setRemoving(l)} aria-label=${T("Retirer", "Remove")}>−</button>
         <button onClick=${() => addBox(l)} aria-label=${T("Ajouter une boîte", "Add a box")}>+</button>
       </div></div>`)}</div>
+    <${MedicineDescription} cis=${item.cis_code} cip13=${item.cip13} />
     ${removing && html`<${RemoveLot} lot=${removing} perBox=${perBox} onClose=${() => { setRemoving(null); load(); }} />`}
   </${Sheet}>`;
 }

@@ -117,3 +117,11 @@ button { font: inherit; color: inherit; }
 .sheet-head > :first-child { justify-self: start; margin: 0; }
 .sheet-head > :last-child { justify-self: end; }
 .sheet-body { overflow: auto; padding: 8px 16px 24px; }
+
+/* --- Batch 3: medicine details --- */
+.purpose { color: var(--accent); font-size: 14px; }
+.label { flex: none; min-width: 96px; }
+.right { text-align: right; }
+.bullet { padding-left: 16px; position: relative; margin: 4px 0; }
+.bullet::before { content: "•"; position: absolute; left: 2px; color: var(--muted); }
+.para { margin: 4px 0; }
