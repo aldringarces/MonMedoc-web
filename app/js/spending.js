@@ -15,6 +15,8 @@ export function Spending({ onClose }) {
   const [payments, setPayments] = useState([]);
   const [error, setError] = useState(null);
   const [amount, setAmount] = useState("");
+  const [filter, setFilter] = useState([]);          // medicines shown (empty = all)
+  const [choosing, setChoosing] = useState(false);
 
   async function load() {
     const [l, p] = await Promise.all([supabase.from("pharmacy_spending").select(),
@@ -38,8 +40,12 @@ export function Spending({ onClose }) {
   }
 
   if (!lines) return html`<${Sheet} title=${T("Dépenses en pharmacie", "Pharmacy spending")} onClose=${onClose}><div class="empty">…</div><//>`;
-  const yl = lines.filter((l) => parseDay(l.day).getFullYear() === year);
-  const yp = payments.filter((p) => parseDay(p.paid_on).getFullYear() === year);
+  const names = [...new Set(lines.map((l) => l.name).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+  const keep = (name) => !filter.length || filter.includes(name);
+  const toggle = (name) => setFilter(filter.includes(name) ? filter.filter((n) => n !== name) : [...filter, name]);
+  const yl = lines.filter((l) => parseDay(l.day).getFullYear() === year && keep(l.name));
+  // With a filter, only payments noted for those medicines
+  const yp = payments.filter((p) => parseDay(p.paid_on).getFullYear() === year && keep(p.note));
   const sum = (arr, f) => arr.reduce((s, x) => s + Number(f(x) || 0), 0);
   const value = sum(yl, (l) => l.value), insurance = sum(yl, (l) => l.insurance_share);
   const years = [...new Set([thisYear, ...lines.map((l) => parseDay(l.day).getFullYear()), ...payments.map((p) => parseDay(p.paid_on).getFullYear())])].sort((a, b) => b - a);
@@ -58,6 +64,14 @@ export function Spending({ onClose }) {
   return html`<${Sheet} title=${T("Dépenses en pharmacie", "Pharmacy spending")} onClose=${onClose}>
     <${ErrorBox} error=${error} />
     <div class="card form">
+      <button class="row rowbtn" onClick=${() => setChoosing(!choosing)}><div class="main left">${T("Médicaments", "Medicines")}</div>
+        <div class="sub">${!filter.length ? T("Tous", "All") : filter.length === 1 ? filter[0] : T(`${filter.length} médicaments`, `${filter.length} medicines`)}</div>
+        <span class="chev">${choosing ? "▾" : "›"}</span></button>
+      ${choosing && html`
+        <label class="row"><input type="checkbox" checked=${!filter.length} onChange=${() => setFilter([])} style="width:20px;height:20px;accent-color:var(--accent)" />
+          <div class="main">${T("Tous les médicaments", "All medicines")}</div></label>
+        ${names.map((n) => html`<label class="row"><input type="checkbox" checked=${filter.includes(n)} onChange=${() => toggle(n)}
+          style="width:20px;height:20px;accent-color:var(--accent)" /><div class="main">${n}</div></label>`)}`}
       <div class="row"><div class="main">${T("Année", "Year")}</div>
         <select value=${year} onChange=${(e) => setYear(Number(e.target.value))}>${years.map((y) => html`<option value=${y}>${y}</option>`)}</select></div>
       <div class="row"><div class="main">${T("Valeur des boîtes reçues", "Value of boxes received")}</div><div class="sub">${euros(value)}</div></div>
