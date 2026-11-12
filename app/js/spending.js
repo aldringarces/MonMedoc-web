@@ -65,8 +65,8 @@ export function Spending({ onClose }) {
       <div class="row"><div class="main name">${T("Reste avant mutuelle (estimé)", "Left before mutuelle (est.)")}</div><div class="name">${euros(value - insurance)}</div></div>
       ${yp.length ? html`<div class="row"><div class="main name">${T("Payé (saisi)", "Paid (entered)")}</div><div class="name">${euros(sum(yp, (p) => p.amount))}</div></div>` : ""}
     </div>
-    <p class="note">${T("Prix public des boîtes reçues en pharmacie (et ajoutées à l'inventaire depuis le 12 nov. 2026). Estimation : taux de remboursement de chaque boîte, 100 % pour les traitements en ALD (sauf médicaments à 15 %). Sans votre mutuelle ni les franchises médicales : saisissez le montant payé pour le vrai total.",
-                       "Public price of boxes received at the pharmacy (and added to the inventory since 12 Nov 2026). Estimate: each box's reimbursement rate, 100% for ALD treatments (except 15% medicines). Without your mutuelle or medical deductibles: enter the amount paid for the real total.")}</p>
+    <p class="note">${T("Prix public des boîtes reçues en pharmacie et des boîtes de l'inventaire (comptées le jour de leur ajout). Estimation : taux de remboursement de chaque boîte, 100 % pour les traitements en ALD (sauf médicaments à 15 %). Sans votre mutuelle ni les franchises médicales : saisissez le montant payé pour le vrai total.",
+                       "Public price of boxes received at the pharmacy and of inventory boxes (counted on the day they were added). Estimate: each box's reimbursement rate, 100% for ALD treatments (except 15% medicines). Without your mutuelle or medical deductibles: enter the amount paid for the real total.")}</p>
     <form class="card form" onSubmit=${addPayment}>
       <div class="row"><div class="main">${T("Payé aujourd'hui", "Paid today")}</div>
         <input inputmode="decimal" placeholder="0,00 €" value=${amount} onInput=${(e) => setAmount(e.target.value)} style="max-width:90px" />
