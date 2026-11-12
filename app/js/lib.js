@@ -57,4 +57,4 @@ export function detailsTitle(p) {
   const first = (p.first_name || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase()[0] || "";
   return T(`Informations ${"aeiouyh".includes(first) ? "d'" : "de "}${p.first_name}`, `${p.first_name}'s details`);
 }
-export const inviteLink = (code) => `https://aldringarces.github.io/rejoindre/?code=${code}`;
+export const inviteLink = (code) => `https://monmedoc.kalatas.com/rejoindre/?code=${code}`;
