@@ -47,8 +47,39 @@ function TreatmentSheet({ med: m, onClose }) {
       ${Number(m.units_outstanding) > 0 && html`<div class="row"><div class="sub label">${T("Pharmacie", "Pharmacy")}</div><div class="main right">${T(`doit encore ${clean(m.units_outstanding)}`, `still owes ${clean(m.units_outstanding)}`)}${m.pharmacy_name ? html`<br />${m.pharmacy_name}` : ""}</div></div>`}
       ${m.doctor_name && html`<div class="row"><div class="sub label">${T("Médecin", "Doctor")}</div><div class="main right">${m.doctor_name}</div></div>`}
     </div>
+    <${PrescriptionFiles} prescriptionId=${m.prescription_id} />
     <${MedicineDescription} cis=${m.cis_code} cip13=${m.cip13} />
   </${Sheet}>`;
+}
+
+/// The prescription itself (photo or PDF saved from the iPhone, update 025).
+/// Opened through a link valid for 5 minutes (the files are private).
+export function PrescriptionFiles({ prescriptionId, all }) {
+  const [files, setFiles] = useState(null);
+  const [error, setError] = useState(null);
+  useEffect(() => {
+    let q = supabase.from("prescription_file_list").select();
+    if (!all) q = q.eq("prescription_id", prescriptionId);
+    q.then(({ data }) => setFiles(data || []));
+  }, [prescriptionId]);
+  async function open(f) {
+    const tab = window.open("", "_blank");   // opened now, or the browser blocks it
+    const { data, error } = await supabase.storage.from("prescriptions").createSignedUrl(f.path, 300);
+    if (error || !data) { if (tab) tab.close(); setError(message(error || T("Introuvable", "Not found"))); return; }
+    if (tab) tab.location = data.signedUrl; else location.href = data.signedUrl;
+  }
+  if (!files || (!files.length && !all)) return null;
+  const date = (f) => dayText(f.prescribed_on ? parseDay(f.prescribed_on) : new Date(f.created_at));
+  return html`
+    ${!all && html`<div class="section-title">${T("Ordonnance", "Prescription")}</div>`}
+    <${ErrorBox} error=${error} />
+    <div class="card">${files.length ? files.map((f) => html`<button class="rowbtn row" onClick=${() => open(f)}>
+      <span class="hist-icon">📄</span>
+      <div class="main left"><div class="name">${T(`Ordonnance du ${date(f)}`, `Prescription of ${date(f)}`)}</div>
+        ${[f.doctor_name, f.title].filter(Boolean).length ? html`<div class="sub">${[f.doctor_name, f.title].filter(Boolean).join(" · ")}</div>` : ""}</div>
+      <span class="chev">›</span></button>`)
+      : html`<div class="row sub">${T("Aucune ordonnance gardée. Ajoutez-les depuis l'app iPhone (scan, import ou page du traitement).",
+                                       "No prescriptions kept. Add them from the iPhone app (scan, import or the treatment's page).")}</div>`}</div>`;
 }
 
 export function shortageTitle(x) {
