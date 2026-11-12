@@ -119,7 +119,8 @@ button { font: inherit; color: inherit; }
 .sheet-body { overflow: auto; padding: 8px 16px 24px; }
 
 /* --- Batch 3: medicine details --- */
-.purpose { color: var(--accent); font-size: 14px; }
+.purpose { color: var(--accent); font-size: 14px; display: flex; align-items: center; gap: 5px; }
+.purpose .steth { width: 15px; height: 15px; flex: none; }
 .label { flex: none; min-width: 96px; }
 .right { text-align: right; }
 .bullet { padding-left: 16px; position: relative; margin: 4px 0; }

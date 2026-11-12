@@ -15,7 +15,13 @@ export async function loadIndications(cisCodes) {
 /// Your own "Pour :" text first, otherwise the label from the indications.
 export const purposeOf = (own, cis, indications) => (own && own.trim()) || purposeFrom(indications[cis]);
 
-export const Purpose = ({ text }) => (text ? html`<div class="purpose">⚕︎ ${text}</div>` : null);
+/// Stethoscope, like the iPhone app's icon
+export const Stethoscope = () => html`<svg class="steth" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor"
+  stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M5 3v5a5 5 0 0 0 10 0V3" /><path d="M5 3h2M13 3h2" />
+  <path d="M10 13v2a5 5 0 0 0 10 0v-2" /><circle cx="20" cy="11" r="2" /></svg>`;
+
+export const Purpose = ({ text }) => (text ? html`<div class="purpose"><${Stethoscope} /><span>${text}</span></div>` : null);
 
 /// "· traitement de la goutte ," → bullet items
 function bullets(text) {
