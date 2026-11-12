@@ -14,6 +14,7 @@
   h1 { font-size: 24px; margin: 0 0 8px; }
   p { color: var(--muted); margin: 8px 0; }
   .code { font: 700 40px/1.2 ui-monospace, Menlo, monospace; letter-spacing: 6px; margin: 18px 0; color: var(--text); }
+  a.button.secondary { background: none; color: var(--accent); border: 1px solid var(--accent); }
   a.button { display: block; background: var(--accent); color: #fff; text-decoration: none; font-weight: 600; padding: 15px; border-radius: 14px; margin-top: 18px; }
   .steps { text-align: left; margin-top: 22px; font-size: 15px; color: var(--muted); }
   .steps li { margin: 6px 0; }
@@ -27,6 +28,7 @@
        data-en="Someone is inviting you to share a profile: you'll see the same treatments and doses.">Quelqu'un vous invite à partager un profil : vous verrez les mêmes traitements et prises.</p>
     <div class="code" id="code">——————</div>
     <a class="button" id="open" href="monmedoc://rejoindre" data-fr="Ouvrir dans MonMédoc" data-en="Open in MonMédoc">Ouvrir dans MonMédoc</a>
+    <a class="button secondary" id="web" href="/app/" data-fr="Ouvrir la version web" data-en="Open the web version">Ouvrir la version web</a>
     <ol class="steps">
       <li data-fr="Installez MonMédoc sur votre iPhone (demandez le lien à la personne qui vous invite)."
           data-en="Install MonMédoc on your iPhone (ask the person inviting you for the link).">Installez MonMédoc sur votre iPhone (demandez le lien à la personne qui vous invite).</li>
@@ -44,6 +46,7 @@
   if (code) {
     document.getElementById("code").textContent = code;
     document.getElementById("open").href = "monmedoc://rejoindre?code=" + code;
+    document.getElementById("web").href = "/app/?join=" + code;
   }
   // English if the phone isn't in French
   if (!(navigator.language || "fr").toLowerCase().startsWith("fr")) {

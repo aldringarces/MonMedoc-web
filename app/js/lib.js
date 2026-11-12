@@ -1,0 +1,60 @@
+// Shared pieces: database connection, language, small helpers.
+import { h } from "https://esm.sh/preact@10.24.3";
+import htm from "https://esm.sh/htm@3.1.1";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4";
+
+export const html = htm.bind(h);
+
+// Same project as the iPhone app (publishable key: safe in a web page)
+export const supabase = createClient(
+  "https://fritnkzqgymhuthgysll.supabase.co",
+  "sb_publishable_1XY9zX8MFCbL5Tc1J2a8xA_qEMo268k",
+  { auth: { persistSession: true, detectSessionInUrl: true, flowType: "implicit" } }
+);
+
+// ---------- Language: Réglages › Langue, else the browser's ----------
+function storedLanguage() {
+  try { return localStorage.getItem("lang") || "system"; } catch { return "system"; }
+}
+export const languageSetting = storedLanguage();
+export const english = languageSetting === "en"
+  || (languageSetting === "system" && !(navigator.language || "fr").toLowerCase().startsWith("fr"));
+export const T = (fr, en) => (english ? en : fr);
+export function setLanguage(value) {
+  try { localStorage.setItem("lang", value); } catch {}
+  location.reload();
+}
+document.documentElement.lang = english ? "en" : "fr";
+export const locale = english ? "en-GB" : "fr-FR";
+export const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "Europe/Paris";
+
+// ---------- Dates and numbers ----------
+export const shortTime = (t) => (t || "").slice(0, 5);
+export const timeOf = (ts) => new Date(ts).toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" });
+export const parseDay = (d) => (d ? new Date(d + "T00:00:00") : null);
+export const startOfToday = () => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; };
+export const addDays = (date, n) => { const d = new Date(date); d.setDate(d.getDate() + n); return d; };
+export const dayText = (date) => new Date(date).toLocaleDateString(locale, { day: "numeric", month: "short", year: "numeric" });
+export const longDay = (date) => new Date(date).toLocaleDateString(locale, { weekday: "long", day: "numeric", month: "long" });
+export const clean = (n) => (Number(n) % 1 === 0 ? String(Number(n)) : Number(n).toFixed(1));
+export const message = (e) => (e && (e.message || e.error_description)) || String(e);
+
+/// "3 boîte(s) + 12" (or "40" when the box size is unknown)
+export function boxes(units, perBox) {
+  units = Number(units);
+  if (!perBox || perBox <= 1) return clean(units);
+  const full = Math.floor(units / perBox), rest = units - full * perBox;
+  const b = T(`${full} boîte(s)`, `${full} box(es)`);
+  return full === 0 ? clean(rest) : rest ? `${b} + ${clean(rest)}` : b;
+}
+
+// ---------- Profiles ----------
+export const profileName = (p) => [p.first_name, p.last_name ? p.last_name.toUpperCase() : null].filter(Boolean).join(" ");
+export const menuName = (p) => (p.is_self ? T("Mon profil", "My profile") : profileName(p));
+export const initials = (p) => ((p.first_name || "?")[0] + ((p.last_name || "")[0] || "")).toUpperCase();
+export function detailsTitle(p) {
+  if (!p || p.is_self) return T("Mes informations", "My details");
+  const first = (p.first_name || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase()[0] || "";
+  return T(`Informations ${"aeiouyh".includes(first) ? "d'" : "de "}${p.first_name}`, `${p.first_name}'s details`);
+}
+export const inviteLink = (code) => `https://aldringarces.github.io/rejoindre/?code=${code}`;
