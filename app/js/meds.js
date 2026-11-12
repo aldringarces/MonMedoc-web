@@ -13,6 +13,13 @@ function whenText(m) {
   return text;
 }
 
+/// "24 + 168 en boîtes" (loose pills + unopened boxes, update 031), or "24 restant(s)"
+function stockText(m) {
+  const boxes = Number(m.inventory_units || 0);
+  return boxes > 0 ? T(`${clean(m.current_stock)} + ${clean(boxes)} en boîtes`, `${clean(m.current_stock)} + ${clean(boxes)} in boxes`)
+                   : T(`${clean(m.current_stock)} restant(s)`, `${clean(m.current_stock)} left`);
+}
+
 // ---------- Traitements ----------
 export function Treatments({ meds, shortages, indications }) {
   const [open, setOpen] = useState(null);
@@ -24,7 +31,7 @@ export function Treatments({ meds, shortages, indications }) {
       <div class="name">${m.display_name}</div>
       <${Purpose} text=${purposeOf(m.purpose, m.cis_code, indications)} />
       <div class="sub">${clean(m.units_per_dose)} × ${whenText(m)}</div>
-      <div class="sub">${T(`${clean(m.current_stock)} restant(s)`, `${clean(m.current_stock)} left`)}${m.days_of_stock_left != null ? ` · ${m.days_of_stock_left} ${T("j", "d")}` : ""}${m.prescription_end_date ? ` · ${T("jusqu'au", "until")} ${dayText(parseDay(m.prescription_end_date))}` : ""}</div>
+      <div class="sub">${stockText(m)}${(m.days_left_total ?? m.days_of_stock_left) != null ? ` · ${m.days_left_total ?? m.days_of_stock_left} ${T("j", "d")}` : ""}${m.prescription_end_date ? ` · ${T("jusqu'au", "until")} ${dayText(parseDay(m.prescription_end_date))}` : ""}</div>
       <div class="badges">
         ${m.low_stock && html`<span class="badge low">${T("Stock bas", "Low stock")}</span>`}
         ${shortage && html`<span class="badge rdv">${shortageBadge(shortage)}</span>`}
@@ -42,7 +49,7 @@ function TreatmentSheet({ med: m, onClose }) {
     <div class="card">
       ${m.purpose && html`<div class="row"><div class="sub label">${T("Pour", "For")}</div><div class="main right">${m.purpose}</div></div>`}
       <div class="row"><div class="sub label">${T("Prise", "Dose")}</div><div class="main right">${clean(m.units_per_dose)} × ${whenText(m)}${m.logging_mode === "automatic" ? T(" (auto)", " (auto)") : ""}</div></div>
-      <div class="row"><div class="sub label">${T("Stock", "Supply")}</div><div class="main right">${clean(m.current_stock)}${m.days_of_stock_left != null ? ` · ${m.days_of_stock_left} ${T("j", "d")}` : ""}</div></div>
+      <div class="row"><div class="sub label">${T("Stock", "Supply")}</div><div class="main right">${stockText(m)}${(m.days_left_total ?? m.days_of_stock_left) != null ? ` · ${m.days_left_total ?? m.days_of_stock_left} ${T("j", "d")}` : ""}</div></div>
       ${m.start_date && html`<div class="row"><div class="sub label">${T("Ordonnance", "Prescription")}</div><div class="main right">${T("depuis le", "since")} ${dayText(parseDay(m.start_date))}${m.prescription_end_date ? html`<br />${T("jusqu'au", "until")} ${dayText(parseDay(m.prescription_end_date))}` : ""}</div></div>`}
       ${Number(m.units_outstanding) > 0 && html`<div class="row"><div class="sub label">${T("Pharmacie", "Pharmacy")}</div><div class="main right">${T(`doit encore ${clean(m.units_outstanding)}`, `still owes ${clean(m.units_outstanding)}`)}${m.pharmacy_name ? html`<br />${m.pharmacy_name}` : ""}</div></div>`}
       ${m.doctor_name && html`<div class="row"><div class="sub label">${T("Médecin", "Doctor")}</div><div class="main right">${m.doctor_name}</div></div>`}
