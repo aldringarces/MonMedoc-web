@@ -26,6 +26,8 @@ function SignIn() {
   const [email, setEmail] = useState("");
   const [sent, setSent] = useState(false);
   const [code, setCode] = useState("");
+  const [usesCode, setUsesCode] = useState(false);   // false = password
+  const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
 
@@ -39,6 +41,16 @@ function SignIn() {
     const slow = error && (error.name === "AuthRetryableFetchError" || !error.status || error.status >= 500);
     if (error && !slow) setError(message(error)); else setSent(true);
   }
+  async function passwordSignIn(e) {
+    e.preventDefault();
+    setBusy(true); setError(null);
+    const { error } = await supabase.auth.signInWithPassword({ email: email.trim().toLowerCase(), password });
+    setBusy(false);
+    if (error) setError(/invalid login/i.test(error.message)
+      ? T("E-mail ou mot de passe incorrect. Pas encore de mot de passe ? Utilisez « Code par e-mail », puis Réglages › Mot de passe.",
+          "Wrong email or password. No password yet? Use \"Email code\", then Settings › Password.")
+      : message(error));
+  }
   async function verify(e) {
     e.preventDefault();
     setBusy(true); setError(null);
@@ -50,18 +62,29 @@ function SignIn() {
   return html`<div class="page"><div class="signin">
     <img src="logo.png" alt="" />
     <h1>MonMédoc</h1>
-    ${!sent ? html`
-      <p class="sub">${T("Connectez-vous avec l'adresse e-mail de votre compte MonMédoc (celle de votre identifiant Apple).",
-                         "Sign in with your MonMédoc account's email (the one on your Apple ID).")}</p>
+    <div class="segmented signin-mode">
+      <button class=${!usesCode ? "on" : ""} onClick=${() => { setUsesCode(false); setError(null); }}>${T("Mot de passe", "Password")}</button>
+      <button class=${usesCode ? "on" : ""} onClick=${() => { setUsesCode(true); setError(null); }}>${T("Code par e-mail", "Email code")}</button>
+    </div>
+    ${!usesCode ? html`
+      <form onSubmit=${passwordSignIn}>
+        <input class="field" type="email" required placeholder=${T("Adresse e-mail", "Email address")}
+               value=${email} onInput=${(e) => setEmail(e.target.value)} autocomplete="username" />
+        <input class="field" type="password" required placeholder=${T("Mot de passe", "Password")}
+               value=${password} onInput=${(e) => setPassword(e.target.value)} autocomplete="current-password" />
+        <button class="primary" disabled=${busy || !email || password.length < 6}>${T("Se connecter", "Sign in")}</button>
+      </form>` : !sent ? html`
+      <p class="sub">${T("Recevez un code par e-mail (adresse de votre compte MonMédoc).",
+                         "Get a code by email (your MonMédoc account's address).")}</p>
       <form onSubmit=${send}>
         <input class="field" type="email" required placeholder=${T("Adresse e-mail", "Email address")}
                value=${email} onInput=${(e) => setEmail(e.target.value)} autocomplete="email" />
-        <button class="primary" disabled=${busy || !email}>${T("Recevoir un lien de connexion", "Send me a sign-in link")}</button>
+        <button class="primary" disabled=${busy || !email}>${T("Recevoir un code", "Send me a code")}</button>
       </form>` : html`
-      <p class="sub">${T(`Un e-mail a été envoyé à ${email} (il peut mettre une minute). Ouvrez-le sur cet appareil et touchez le lien, ou tapez le code.`,
-                         `An email was sent to ${email} (it can take a minute). Open it on this device and tap the link, or type the code.`)}</p>
+      <p class="sub">${T(`Un e-mail a été envoyé à ${email} (il peut mettre une minute). Tapez le code, ou touchez le lien sur cet appareil.`,
+                         `An email was sent to ${email} (it can take a minute). Type the code, or tap the link on this device.`)}</p>
       <form onSubmit=${verify}>
-        <input class="field" inputmode="numeric" placeholder=${T("…ou entrez le code reçu", "…or enter the code you received")}
+        <input class="field" inputmode="numeric" autocomplete="one-time-code" placeholder=${T("Code à 6 chiffres", "6-digit code")}
                value=${code} onInput=${(e) => setCode(e.target.value)} />
         <button class="primary" disabled=${busy || code.trim().length < 6}>${T("Se connecter", "Sign in")}</button>
       </form>

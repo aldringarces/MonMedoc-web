@@ -168,3 +168,4 @@ button { font: inherit; color: inherit; }
 .access-row .name { margin-bottom: 6px; }
 .segmented.small button { padding: 5px; font-size: 14px; }
 .row.access .rowbtn.red { margin-top: 8px; width: 100%; text-align: left; padding: 8px 0; }
+.segmented.signin-mode { margin: 4px 0 14px; flex: none; }

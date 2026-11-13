@@ -46,6 +46,7 @@ export function Settings({ session, profiles, active, onSwitch, reload, openDeta
     <div class="section-title">${T("Compte", "Account")}</div>
     <div class="card">
       <div class="row"><div class="main">E-mail</div><div class="sub">${session.user.email}</div></div>
+      <button class="row rowbtn" onClick=${() => setSheet("password")}><div class="main name">${T("Mot de passe", "Password")}</div><span class="chev">›</span></button>
       <button class="row rowbtn red" onClick=${() => confirm(T("Se déconnecter de MonMédoc sur ce navigateur ?", "Sign out of MonMédoc in this browser?")) && supabase.auth.signOut()}>${T("Se déconnecter", "Sign out")}</button>
     </div>
     <p class="note center">${T("Rappels, scan et ajout de traitements : dans l'app iPhone.", "Reminders, scanning and adding treatments: in the iPhone app.")}</p>
@@ -55,6 +56,7 @@ export function Settings({ session, profiles, active, onSwitch, reload, openDeta
     ${sheet === "prescriptions" && html`<${Sheet} title=${mine(active, "Mes ordonnances", "My prescriptions", "Ordonnances", "Prescriptions")} onClose=${() => setSheet(null)}>
         <${PrescriptionFiles} all=${true} /><//>`}
     ${sheet === "spending" && html`<${Spending} onClose=${() => setSheet(null)} />`}
+    ${sheet === "password" && html`<${PasswordSheet} onClose=${() => setSheet(null)} />`}
     ${openDetails && html`<${DetailsSheet} active=${active} reload=${reload} onClose=${() => setOpenDetails(false)} />`}`;
 }
 
@@ -136,6 +138,34 @@ function ProfilesSheet({ profiles, onSwitch, reload, onClose }) {
     <p class="note">${T("Code valable 7 jours, une seule fois. Dans « Personnes et accès », choisissez ce que chacun peut voir ou modifier.",
                         "Code valid 7 days, once. In \"People and access\", choose what each person can see or change.")}</p>
     ${people && html`<${PeopleSheet} active=${active} onClose=${() => { setPeople(false); reload(); }} />`}
+  </${Sheet}>`;
+}
+
+// ---------- Password (sign in without waiting for an email) ----------
+function PasswordSheet({ onClose }) {
+  const [pw, setPw] = useState("");
+  const [again, setAgain] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState(null);
+  const [done, setDone] = useState(false);
+  async function save(e) {
+    e.preventDefault();
+    setBusy(true); setError(null);
+    const { error } = await supabase.auth.updateUser({ password: pw });
+    setBusy(false);
+    if (error) setError(message(error)); else setDone(true);
+  }
+  return html`<${Sheet} title=${T("Mot de passe", "Password")} onClose=${onClose}>
+    <${ErrorBox} error=${error} />
+    ${done ? html`<p class="sub">${T("Mot de passe enregistré ✓", "Password saved ✓")}</p>` : html`
+    <form class="card form" onSubmit=${save}>
+      <div class="row"><input class="field" type="password" autocomplete="new-password" placeholder=${T("Nouveau mot de passe", "New password")} value=${pw} onInput=${(e) => setPw(e.target.value)} /></div>
+      <div class="row"><input class="field" type="password" autocomplete="new-password" placeholder=${T("Encore une fois", "Once more")} value=${again} onInput=${(e) => setAgain(e.target.value)} /></div>
+      <div class="row"><button class="primary" disabled=${busy || pw.length < 6 || pw !== again}>${T("Enregistrer", "Save")}</button></div>
+    </form>
+    <p class="note">${again && pw !== again ? T("Les deux ne correspondent pas.", "They don't match.")
+      : T("Au moins 6 caractères. Ensuite : connexion avec votre e-mail et ce mot de passe, sur l'iPhone et sur le web.",
+          "At least 6 characters. Then sign in with your email and this password, on the iPhone and on the web.")}</p>`}
   </${Sheet}>`;
 }
 
