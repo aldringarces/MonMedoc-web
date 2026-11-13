@@ -12,14 +12,14 @@ const LEAD = 2;
 function pharmacyDay(m) {
   const today = startOfToday();
   const start = parseDay(m.start_date);
-  if (Number(m.units_dispensed_total) === 0 && Number(m.current_stock) === 0 && start) return addDays(start, 1);
+  // Nothing collected yet on this prescription (even with pills left): go and collect it
+  if (Number(m.units_dispensed_total) === 0 && start) return addDays(start, 1);
   const perDay = Number(m.dosage_per_day || 0);
   let last;
   if (Number(m.units_dispensed_total) > 0 && perDay > 0 && start) {
     last = addDays(start, Math.floor(Number(m.units_dispensed_total) / perDay) - 1);
   } else {
-    // Nothing collected yet: before loose pills + reserve run out
-    const left = Number(m.units_dispensed_total) === 0 ? (m.days_left_total ?? m.days_of_stock_left) : m.days_of_stock_left;
+    const left = m.days_of_stock_left;
     if (left == null) return today;
     if (left <= 0) return addDays(today, 1);
     last = addDays(today, left - 1);
