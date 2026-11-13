@@ -3,6 +3,7 @@ import { useState, useEffect } from "https://esm.sh/preact@10.24.3/hooks";
 import { html, supabase, T, shortTime, clean, parseDay, dayText, startOfToday, addDays, boxes, message } from "./lib.js";
 import { Sheet, ErrorBox } from "./components.js";
 import { loadIndications, purposeOf, Purpose, MedicineDescription } from "./info.js";
+import { nextPickup } from "./followup.js";
 
 /// "08:00 · 20:00", or "Si besoin · max 3 par jour · 4 h entre 2 prises" (update 023)
 function whenText(m) {
@@ -36,9 +37,7 @@ export function Treatments({ meds, shortages, indications }) {
       <div class="badges">
         ${m.low_stock && html`<span class="badge low">${Number(m.inventory_units || 0) > 0 ? T("Boîte à ouvrir", "Open a box") : T("Stock bas", "Low stock")}</span>`}
         ${shortage && html`<span class="badge rdv">${shortageBadge(shortage)}</span>`}
-        ${m.pharmacy_owes && html`<span class="badge owes">${T(`La pharmacie doit ${clean(m.units_outstanding)}`, `Pharmacy owes ${clean(m.units_outstanding)}`)}</span>`}
-        ${!m.pharmacy_owes && !m.as_needed && Number(m.units_dispensed_total) === 0 && Number(m.units_outstanding) > 0
-          && html`<span class="badge owes">${T(`À récupérer : ${clean(m.units_outstanding)}`, `To collect: ${clean(m.units_outstanding)}`)}</span>`}
+        ${(() => { const p = nextPickup(m); return p && p.due && html`<span class="badge owes">${T(`À récupérer : ${clean(p.units)}`, `To collect: ${clean(p.units)}`)}</span>`; })()}
         ${m.rdv_due && html`<span class="badge rdv">${T("RDV à prendre", "Book appointment")}</span>`}
       </div>
     </div><span class="chev">›</span></button>`;
@@ -54,7 +53,7 @@ function TreatmentSheet({ med: m, onClose }) {
       <div class="row"><div class="sub label">${T("Prise", "Dose")}</div><div class="main right">${clean(m.units_per_dose)} × ${whenText(m)}${m.logging_mode === "automatic" ? T(" (auto)", " (auto)") : ""}</div></div>
       <div class="row"><div class="sub label">${T("Stock", "Supply")}</div><div class="main right">${stockText(m)}</div></div>
       ${m.start_date && html`<div class="row"><div class="sub label">${T("Ordonnance", "Prescription")}</div><div class="main right">${T("depuis le", "since")} ${dayText(parseDay(m.start_date))}${m.prescription_end_date ? html`<br />${T("jusqu'au", "until")} ${dayText(parseDay(m.prescription_end_date))}` : ""}</div></div>`}
-      ${Number(m.units_outstanding) > 0 && html`<div class="row"><div class="sub label">${T("Pharmacie", "Pharmacy")}</div><div class="main right">${T(`doit encore ${clean(m.units_outstanding)}`, `still owes ${clean(m.units_outstanding)}`)}${m.pharmacy_name ? html`<br />${m.pharmacy_name}` : ""}</div></div>`}
+      ${Number(m.units_outstanding) > 0 && html`<div class="row"><div class="sub label">${T("Pharmacie", "Pharmacy")}</div><div class="main right">${T(`reste à délivrer : ${clean(m.units_outstanding)}`, `still to dispense: ${clean(m.units_outstanding)}`)}${(() => { const p = nextPickup(m); return p ? html`<br />${T("prochain passage", "next pickup")} ${dayText(p.day)} · ${clean(p.units)}` : ""; })()}${m.pharmacy_name ? html`<br />${m.pharmacy_name}` : ""}</div></div>`}
       ${m.doctor_name && html`<div class="row"><div class="sub label">${T("Médecin", "Doctor")}</div><div class="main right">${m.doctor_name}</div></div>`}
     </div>
     <${PrescriptionFiles} prescriptionId=${m.prescription_id} />

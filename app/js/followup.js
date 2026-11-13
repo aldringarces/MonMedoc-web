@@ -33,6 +33,28 @@ function pharmacyDay(m) {
   return candidates.find((d) => ALLOWED.has(d.getDay())) || base;
 }
 
+/// One pickup: 4 weeks of treatment rounded up to whole boxes (a 3-month box
+/// is given whole), never more than what's left (same rule as the app).
+export function pickupUnits(m) {
+  const outstanding = Number(m.units_outstanding || 0);
+  const perDay = Number(m.dosage_per_day || 0);
+  if (outstanding <= 0) return 0;
+  if (perDay <= 0) return outstanding;
+  let units = perDay * 28;
+  const box = Number(m.units_per_box || 0);
+  if (box > 0) units = Math.ceil(units / box) * box;
+  return Math.min(units, outstanding);
+}
+
+/// Next pharmacy pickup { day, units }, or null; `due` once that day has come.
+export function nextPickup(m) {
+  const firstPickup = !m.pharmacy_owes && !m.as_needed && Number(m.units_dispensed_total) === 0 && Number(m.units_outstanding) > 0;
+  if (!(m.pharmacy_owes || firstPickup)) return null;
+  const day = pharmacyDay(m);
+  if (!day) return null;
+  return { day, units: pickupUnits(m), due: day <= startOfToday() };
+}
+
 function pharmacyVisits(meds) {
   const byPharmacy = {};
   for (const m of meds) {
@@ -42,9 +64,12 @@ function pharmacyVisits(meds) {
     const day = pharmacyDay(m);
     if (!day) continue;
     const key = m.pharmacy_name || "";
-    (byPharmacy[key] ||= []).push({ day, line: firstPickup
-      ? T(`${m.display_name} : ${clean(m.units_outstanding)} à récupérer (1re délivrance)`, `${m.display_name}: ${clean(m.units_outstanding)} to collect (first pickup)`)
-      : T(`${m.display_name} : ${clean(m.units_outstanding)} à récupérer`, `${m.display_name}: ${clean(m.units_outstanding)} to collect`) });
+    const units = pickupUnits(m);
+    const rest = Number(m.units_outstanding) - units;
+    let line = T(`${m.display_name} : ${clean(units)} à récupérer`, `${m.display_name}: ${clean(units)} to collect`);
+    if (firstPickup) line += T(" (1re délivrance)", " (first pickup)");
+    if (rest > 0) line += T(`, il en restera ${clean(rest)} sur l'ordonnance`, `, ${clean(rest)} left on the prescription after`);
+    (byPharmacy[key] ||= []).push({ day, line });
   }
   return Object.entries(byPharmacy).map(([name, items]) => ({
     name, date: new Date(Math.max(startOfToday(), Math.min(...items.map((i) => i.day)))), lines: items.map((i) => i.line),
