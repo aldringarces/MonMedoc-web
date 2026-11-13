@@ -169,3 +169,7 @@ button { font: inherit; color: inherit; }
 .segmented.small button { padding: 5px; font-size: 14px; }
 .row.access .rowbtn.red { margin-top: 8px; width: 100%; text-align: left; padding: 8px 0; }
 .segmented.signin-mode { margin: 4px 0 14px; flex: none; }
+fieldset.plain { border: 0; margin: 0; padding: 0; min-width: 0; }
+fieldset.plain:disabled input, fieldset.plain:disabled select { color: var(--muted); opacity: 1; }
+fieldset.plain:disabled input::placeholder { color: transparent; }
+fieldset.plain:disabled input[type=date]:not([value]), fieldset.plain:disabled input[type=date][value=""] { color: transparent; }

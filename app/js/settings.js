@@ -2,7 +2,7 @@
 // Mon profil, leave, delete), the shown profile's details, address book,
 // account.
 import { useState, useEffect } from "https://esm.sh/preact@10.24.3/hooks";
-import { html, supabase, T, languageSetting, setLanguage, profileName, menuName, detailsTitle, ofProfile, mine, AREAS, LEVELS, accessOf, canSee, inviteLink, message } from "./lib.js";
+import { html, supabase, T, languageSetting, setLanguage, profileName, menuName, detailsTitle, ofProfile, mine, AREAS, LEVELS, accessOf, canSee, canEdit, inviteLink, message } from "./lib.js";
 import { Avatar, Sheet, ErrorBox } from "./components.js";
 import { PrescriptionFiles } from "./meds.js";
 import { Spending } from "./spending.js";
@@ -34,8 +34,8 @@ export function Settings({ session, profiles, active, onSwitch, reload, openDeta
 
     <div class="section-title">${ofProfile(active, "Mon dossier santé", "My health records", "Dossier santé", "health records")}</div>
     <div class="card">
-      ${canSee(active, "appointments") && html`<button class="row rowbtn" onClick=${() => setSheet("doctors")}><div class="main name">${mine(active, "Mes médecins", "My doctors", "Médecins", "Doctors")}</div><span class="chev">›</span></button>
-      <button class="row rowbtn" onClick=${() => setSheet("pharmacies")}><div class="main name">${mine(active, "Mes pharmacies", "My pharmacies", "Pharmacies", "Pharmacies")}</div><span class="chev">›</span></button>`}
+      ${canSee(active, "doctors") && html`<button class="row rowbtn" onClick=${() => setSheet("doctors")}><div class="main name">${mine(active, "Mes médecins", "My doctors", "Médecins", "Doctors")}</div><span class="chev">›</span></button>`}
+      ${canSee(active, "pharmacies") && html`<button class="row rowbtn" onClick=${() => setSheet("pharmacies")}><div class="main name">${mine(active, "Mes pharmacies", "My pharmacies", "Pharmacies", "Pharmacies")}</div><span class="chev">›</span></button>`}
       ${canSee(active, "prescriptions") && html`<button class="row rowbtn" onClick=${() => setSheet("prescriptions")}><div class="main name">${mine(active, "Mes ordonnances", "My prescriptions", "Ordonnances", "Prescriptions")}</div><span class="chev">›</span></button>`}
       ${canSee(active, "spending") && html`<button class="row rowbtn" onClick=${() => setSheet("spending")}><div class="main name">${mine(active, "Mes dépenses en pharmacie", "My pharmacy spending", "Dépenses en pharmacie", "Pharmacy spending")}</div><span class="chev">›</span></button>`}
     </div>
@@ -295,12 +295,15 @@ function DetailsSheet({ active, reload, onClose }) {
 
   useEffect(() => {
     (async () => {
-      const [details, docs] = await Promise.all([
+      const [details, docs, gp] = await Promise.all([
         supabase.from("profile_details").select().limit(1),
         supabase.from("doctors").select("id,name").order("name"),
+        supabase.rpc("profile_gp"),   // the GP, even when "Médecins" is hidden (update 037)
       ]);
       setD((details.data && details.data[0]) || {});
-      setDoctors(docs.data || []);
+      const list = docs.data || [];
+      for (const g of gp.data || []) if (!list.some((x) => x.id === g.id)) list.push({ id: g.id, name: g.name });
+      setDoctors(list);
     })();
   }, []);
 
@@ -321,10 +324,12 @@ function DetailsSheet({ active, reload, onClose }) {
     setSaved(true);
   }
 
+  const editable = canEdit(active, "details");
   return html`<${Sheet} title=${detailsTitle(active)} onClose=${onClose}
-      actions=${html`<button class="link strong" onClick=${save} disabled=${!d}>${saved ? T("Enregistré ✓", "Saved ✓") : T("Enregistrer", "Save")}</button>`}>
+      actions=${editable && html`<button class="link strong" onClick=${save} disabled=${!d}>${saved ? T("Enregistré ✓", "Saved ✓") : T("Enregistrer", "Save")}</button>`}>
     <${ErrorBox} error=${error} />
-    ${!d ? html`<div class="empty">…</div>` : html`
+    ${!editable && html`<p class="note">🔒 ${T("Lecture seule : seul le propriétaire du profil peut modifier ces informations.", "Read only: only the profile's owner can change these details.")}</p>`}
+    ${!d ? html`<div class="empty">…</div>` : html`<fieldset class="plain" disabled=${!editable}>
       <div class="section-title">${T("Identité", "Identity")}</div>
       <div class="card form">
         <label class="row"><span class="main">${T("Prénom", "First name")}</span><input value=${first} onInput=${(e) => { setSaved(false); setFirst(e.target.value); }} /></label>
@@ -356,6 +361,6 @@ function DetailsSheet({ active, reload, onClose }) {
         <label class="row"><span class="main">${T("Téléphone", "Phone")}</span><input type="tel" value=${d.emergency_phone || ""} onInput=${setPhone("emergency_phone")} /></label>
       </div>
       <p class="note">${T("Le numéro de sécurité sociale reste sur l'iPhone, il n'est jamais enregistré en ligne.",
-                          "The social security number stays on the iPhone; it's never stored online.")}</p>`}
+                          "The social security number stays on the iPhone; it's never stored online.")}</p></fieldset>`}
   </${Sheet}>`;
 }

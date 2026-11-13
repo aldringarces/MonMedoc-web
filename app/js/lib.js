@@ -49,7 +49,9 @@ export const message = (e) => {
 export const AREAS = [
   ["treatments", "Traitements et prises", "Treatments and doses"],
   ["inventory", "Inventaire", "Inventory"],
-  ["appointments", "Rendez-vous, médecins, pharmacies", "Appointments, doctors, pharmacies"],
+  ["appointments", "Rendez-vous", "Appointments"],
+  ["doctors", "Médecins", "Doctors"],
+  ["pharmacies", "Pharmacies", "Pharmacies"],
   ["details", "Informations personnelles", "Personal details"],
   ["prescriptions", "Ordonnances", "Prescriptions"],
   ["spending", "Dépenses en pharmacie", "Pharmacy spending"],
