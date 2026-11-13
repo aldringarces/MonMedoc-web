@@ -142,7 +142,7 @@ function ProfilesSheet({ profiles, onSwitch, reload, onClose }) {
 }
 
 // ---------- Password (sign in without waiting for an email) ----------
-function PasswordSheet({ onClose }) {
+export function PasswordSheet({ onClose }) {
   const [pw, setPw] = useState("");
   const [again, setAgain] = useState("");
   const [busy, setBusy] = useState(false);

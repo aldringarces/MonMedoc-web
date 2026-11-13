@@ -12,7 +12,7 @@ import { History } from "./js/history.js";
 import { Treatments, Inventory, loadShortages } from "./js/meds.js";
 import { loadIndications } from "./js/info.js";
 import { FollowUp } from "./js/followup.js";
-import { Settings } from "./js/settings.js";
+import { Settings, PasswordSheet } from "./js/settings.js";
 
 // An invitation opened in the browser: /app/?join=ABC123 (kept until signed in)
 const joinFromLink = new URLSearchParams(location.search).get("join");
@@ -28,6 +28,9 @@ function SignIn() {
   const [code, setCode] = useState("");
   const [usesCode, setUsesCode] = useState(false);   // false = password
   const [password, setPassword] = useState("");
+  const [resetting, setResetting] = useState(false);   // "Mot de passe oublié ?"
+  const [resetSent, setResetSent] = useState(false);
+  const [again, setAgain] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
 
@@ -51,6 +54,23 @@ function SignIn() {
           "Wrong email or password. No password yet? Use \"Email code\", then Settings › Password.")
       : message(error));
   }
+  async function sendReset(e) {
+    e.preventDefault();
+    setBusy(true); setError(null);
+    const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), { redirectTo: location.origin + location.pathname });
+    setBusy(false);
+    const slow = error && (error.name === "AuthRetryableFetchError" || !error.status || error.status >= 500);
+    if (error && !slow) setError(message(error)); else setResetSent(true);
+  }
+  async function finishReset(e) {
+    e.preventDefault();
+    setBusy(true); setError(null);
+    const { error } = await supabase.auth.verifyOtp({ email: email.trim().toLowerCase(), token: code.trim(), type: "recovery" });
+    if (error) { setBusy(false); setError(T("Code incorrect ou expiré. Utilisez le dernier e-mail reçu.", "Wrong or expired code. Use the latest email.")); return; }
+    const res = await supabase.auth.updateUser({ password });
+    setBusy(false);
+    if (res.error) setError(message(res.error));
+  }
   async function verify(e) {
     e.preventDefault();
     setBusy(true); setError(null);
@@ -66,14 +86,33 @@ function SignIn() {
       <button class=${!usesCode ? "on" : ""} onClick=${() => { setUsesCode(false); setError(null); }}>${T("Mot de passe", "Password")}</button>
       <button class=${usesCode ? "on" : ""} onClick=${() => { setUsesCode(true); setError(null); }}>${T("Code par e-mail", "Email code")}</button>
     </div>
-    ${!usesCode ? html`
+    ${!usesCode && resetting ? html`
+      <p class="sub">${resetSent
+        ? T(`Un code a été envoyé à ${email}. Entrez-le avec votre nouveau mot de passe.`, `A code was sent to ${email}. Enter it with your new password.`)
+        : T("Recevez un code par e-mail pour choisir un nouveau mot de passe.", "Get a code by email to choose a new password.")}</p>
+      ${!resetSent ? html`<form onSubmit=${sendReset}>
+        <input class="field" type="email" required placeholder=${T("Adresse e-mail", "Email address")}
+               value=${email} onInput=${(e) => setEmail(e.target.value)} autocomplete="username" />
+        <button class="primary" disabled=${busy || !email}>${T("Recevoir un code", "Send me a code")}</button>
+      </form>` : html`<form onSubmit=${finishReset}>
+        <input class="field" inputmode="numeric" autocomplete="one-time-code" placeholder=${T("Code à 6 chiffres", "6-digit code")}
+               value=${code} onInput=${(e) => setCode(e.target.value)} />
+        <input class="field" type="password" autocomplete="new-password" placeholder=${T("Nouveau mot de passe", "New password")}
+               value=${password} onInput=${(e) => setPassword(e.target.value)} />
+        <input class="field" type="password" autocomplete="new-password" placeholder=${T("Encore une fois", "Once more")}
+               value=${again} onInput=${(e) => setAgain(e.target.value)} />
+        <button class="primary" disabled=${busy || code.trim().length < 6 || password.length < 6 || password !== again}>${T("Changer le mot de passe", "Change password")}</button>
+      </form>`}
+      <button class="link" onClick=${() => { setResetting(false); setResetSent(false); setCode(""); setError(null); }}>${T("Retour à la connexion", "Back to sign in")}</button>`
+    : !usesCode ? html`
       <form onSubmit=${passwordSignIn}>
         <input class="field" type="email" required placeholder=${T("Adresse e-mail", "Email address")}
                value=${email} onInput=${(e) => setEmail(e.target.value)} autocomplete="username" />
         <input class="field" type="password" required placeholder=${T("Mot de passe", "Password")}
                value=${password} onInput=${(e) => setPassword(e.target.value)} autocomplete="current-password" />
         <button class="primary" disabled=${busy || !email || password.length < 6}>${T("Se connecter", "Sign in")}</button>
-      </form>` : !sent ? html`
+      </form>
+      <button class="link" onClick=${() => { setResetting(true); setPassword(""); setError(null); }}>${T("Mot de passe oublié ?", "Forgot password?")}</button>` : !sent ? html`
       <p class="sub">${T("Recevez un code par e-mail (adresse de votre compte MonMédoc).",
                          "Get a code by email (your MonMédoc account's address).")}</p>
       <form onSubmit=${send}>
@@ -213,13 +252,19 @@ function Main({ session }) {
 
 function App() {
   const [session, setSession] = useState(undefined);
+  const [recovery, setRecovery] = useState(false);   // came from "Choisir un nouveau mot de passe"
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session));
-    const { data } = supabase.auth.onAuthStateChange((_event, s) => setSession(s));
+    const { data } = supabase.auth.onAuthStateChange((event, s) => {
+      setSession(s);
+      if (event === "PASSWORD_RECOVERY") setRecovery(true);
+    });
     return () => data.subscription.unsubscribe();
   }, []);
   if (session === undefined) return html`<div class="empty">…</div>`;
-  return session ? html`<${Main} session=${session} />` : html`<${SignIn} />`;
+  return session
+    ? html`<${Main} session=${session} />${recovery && html`<${PasswordSheet} onClose=${() => setRecovery(false)} />`}`
+    : html`<${SignIn} />`;
 }
 
 render(html`<${App} />`, document.getElementById("app"));
