@@ -60,7 +60,9 @@ function doctorVisits(meds, appointments) {
   }
   const fold = (s) => (s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/^dr\.?\s+/, "");
   return Object.entries(byDoctor)
-    .filter(([name]) => !appointments.some((a) => new Date(a.starts_at) > new Date() && name && fold(a.doctor_name) === fold(name)))
+    // Booked only counts when the appointment is before the prescription ends
+    .filter(([name, items]) => !appointments.some((a) => new Date(a.starts_at) > new Date() && name && fold(a.doctor_name) === fold(name)
+      && new Date(a.starts_at) < addDays(new Date(Math.min(...items.map((i) => i.end))), 1)))
     .map(([name, items]) => ({
       name, deadline: new Date(Math.min(...items.map((i) => i.end))),
       date: new Date(Math.max(today, Math.min(...items.map((i) => i.rdv)))), lines: items.map((i) => i.line),
