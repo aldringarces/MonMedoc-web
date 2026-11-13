@@ -76,6 +76,17 @@ function pharmacyVisits(meds) {
   }));
 }
 
+/// This doctor's prescriptions ending before the appointment (still running today).
+function endingBefore(a, meds) {
+  const fold = (s) => (s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/^dr\.?\s+/, "");
+  const today = startOfToday(), day = new Date(a.starts_at); day.setHours(0, 0, 0, 0);
+  return meds.filter((m) => {
+    const end = parseDay(m.prescription_end_date);
+    const same = a.doctor_id && m.doctor_id ? a.doctor_id === m.doctor_id : fold(a.doctor_name) && fold(a.doctor_name) === fold(m.doctor_name);
+    return end && same && end >= today && end < day;
+  }).map((m) => `${m.display_name} (${dayText(parseDay(m.prescription_end_date))})`);
+}
+
 function doctorVisits(meds, appointments) {
   const today = startOfToday();
   const byDoctor = {};
@@ -88,9 +99,8 @@ function doctorVisits(meds, appointments) {
   }
   const fold = (s) => (s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/^dr\.?\s+/, "");
   return Object.entries(byDoctor)
-    // Booked only counts when the appointment is before the prescription ends
-    .filter(([name, items]) => !appointments.some((a) => new Date(a.starts_at) > new Date() && name && fold(a.doctor_name) === fold(name)
-      && new Date(a.starts_at) < addDays(new Date(Math.min(...items.map((i) => i.end))), 1)))
+    // Any upcoming appointment with this doctor counts as booked (the appointment warns if it's late)
+    .filter(([name]) => !appointments.some((a) => new Date(a.starts_at) > new Date() && name && fold(a.doctor_name) === fold(name)))
     .map(([name, items]) => ({
       name, deadline: new Date(Math.min(...items.map((i) => i.end))),
       date: new Date(Math.max(today, Math.min(...items.map((i) => i.rdv)))), lines: items.map((i) => i.line),
@@ -156,6 +166,7 @@ export function FollowUp({ meds, shortages, onSummary }) {
       <div class="name">${longDay(a.starts_at)} · ${timeOf(a.starts_at)}</div>
       <div>${a.doctor_name || T("Médecin", "Doctor")}</div>
       ${a.location && html`<div class="sub">${a.location}</div>`}
+      ${(() => { const late = endingBefore(a, meds || []); return late.length ? html`<div class="sub soon">⚠︎ ${T(`Après la fin de l'ordonnance : ${late.join(", ")}. Avancez le RDV si possible, ou vérifiez qu'il vous reste assez de comprimés.`, `After the prescription ends: ${late.join(", ")}. Bring it forward if you can, or check you have enough pills.`)}</div>` : null; })()}
       ${a.phone && html`<a class="link small" href=${"tel:" + a.phone.replace(/[^\d+]/g, "")}>${T("Appeler", "Call")} ${a.phone}</a>`}
     </div></div>`)}</div></div>`]);
   if (expiring.length) blocks.push([parseDay(expiring[0].expiry_date), html`<div>
