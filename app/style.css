@@ -52,6 +52,7 @@ button { font: inherit; color: inherit; }
 .badge { font-size: 13px; font-weight: 600; padding: 2px 9px; border-radius: 999px; }
 .badge.low { color: var(--red); background: var(--red-soft); }
 .badge.owes { color: var(--purple); background: var(--purple-soft); }
+.badge.soon { color: var(--muted, #6b7280); background: rgba(127,127,127,.14); }
 .badge.rdv { color: var(--orange); background: var(--orange-soft); }
 .empty { text-align: center; color: var(--muted); padding: 48px 16px; }
 .error { color: var(--red); background: var(--red-soft); padding: 10px 14px; border-radius: 12px; margin: 12px 0; }

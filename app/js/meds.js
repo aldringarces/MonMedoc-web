@@ -37,7 +37,9 @@ export function Treatments({ meds, shortages, indications }) {
       <div class="badges">
         ${m.low_stock && html`<span class="badge low">${Number(m.inventory_units || 0) > 0 ? T("Boîte à ouvrir", "Open a box") : T("Stock bas", "Low stock")}</span>`}
         ${shortage && html`<span class="badge rdv">${shortageBadge(shortage)}</span>`}
-        ${(() => { const p = nextPickup(m); return p && p.due && html`<span class="badge owes">${T(`À récupérer : ${clean(p.units)}`, `To collect: ${clean(p.units)}`)}</span>`; })()}
+        ${(() => { const p = nextPickup(m); if (!p) return null;
+          return p.due ? html`<span class="badge owes">${T(`À récupérer : ${clean(p.units)}`, `To collect: ${clean(p.units)}`)}</span>`
+            : html`<span class="badge soon">${T(`Pharmacie le ${dayText(p.day)}`, `Pharmacy ${dayText(p.day)}`)}</span>`; })()}
         ${m.rdv_due && html`<span class="badge rdv">${T("RDV à prendre", "Book appointment")}</span>`}
       </div>
     </div><span class="chev">›</span></button>`;
