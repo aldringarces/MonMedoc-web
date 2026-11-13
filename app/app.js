@@ -95,7 +95,7 @@ function SignIn() {
                value=${email} onInput=${(e) => setEmail(e.target.value)} autocomplete="username" />
         <button class="primary" disabled=${busy || !email}>${T("Recevoir un code", "Send me a code")}</button>
       </form>` : html`<form onSubmit=${finishReset}>
-        <input class="field" inputmode="numeric" autocomplete="one-time-code" placeholder=${T("Code à 6 chiffres", "6-digit code")}
+        <input class="field" inputmode="numeric" autocomplete="one-time-code" placeholder=${T("Code reçu par e-mail", "Code from the email")}
                value=${code} onInput=${(e) => setCode(e.target.value)} />
         <input class="field" type="password" autocomplete="new-password" placeholder=${T("Nouveau mot de passe", "New password")}
                value=${password} onInput=${(e) => setPassword(e.target.value)} />
@@ -123,7 +123,7 @@ function SignIn() {
       <p class="sub">${T(`Un e-mail a été envoyé à ${email} (il peut mettre une minute). Tapez le code, ou touchez le lien sur cet appareil.`,
                          `An email was sent to ${email} (it can take a minute). Type the code, or tap the link on this device.`)}</p>
       <form onSubmit=${verify}>
-        <input class="field" inputmode="numeric" autocomplete="one-time-code" placeholder=${T("Code à 6 chiffres", "6-digit code")}
+        <input class="field" inputmode="numeric" autocomplete="one-time-code" placeholder=${T("Code reçu par e-mail", "Code from the email")}
                value=${code} onInput=${(e) => setCode(e.target.value)} />
         <button class="primary" disabled=${busy || code.trim().length < 6}>${T("Se connecter", "Sign in")}</button>
       </form>
