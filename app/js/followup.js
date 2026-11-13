@@ -74,7 +74,7 @@ export function FollowUp({ meds, shortages, onSummary }) {
 
   useEffect(() => {
     (async () => {
-      const since = addDays(new Date(), -30).toISOString();
+      const since = addDays(new Date(), -365).toISOString();
       const [a, l] = await Promise.all([
         supabase.from("appointment_list").select().gte("starts_at", since),
         supabase.from("inventory_lot_list").select().gt("quantity", 0),
@@ -87,7 +87,9 @@ export function FollowUp({ meds, shortages, onSummary }) {
 
   const ready = meds && appointments;
   const today = startOfToday();
-  const upcoming = ready ? appointments.filter((a) => new Date(a.starts_at) >= new Date()) : [];
+  const recent = new Date(Date.now() - 30 * 60 * 1000);   // done 30 min after the start
+  const upcoming = ready ? appointments.filter((a) => new Date(a.starts_at) >= recent) : [];
+  const past = ready ? appointments.filter((a) => new Date(a.starts_at) < recent).sort((a, b) => new Date(b.starts_at) - new Date(a.starts_at)) : [];
   const pharmacy = ready ? pharmacyVisits(meds) : [];
   const doctors = ready ? doctorVisits(meds, appointments) : [];
   const expiring = lots.filter((l) => l.expiry_date && parseDay(l.expiry_date) <= addDays(today, 30));
@@ -148,5 +150,9 @@ export function FollowUp({ meds, shortages, onSummary }) {
 
   blocks.sort((a, b) => a[0] - b[0]);
   return html`${error && html`<div class="error">${error}</div>`}
-    ${blocks.length ? blocks.map((b) => b[1]) : html`<div class="empty">${T("Tout est en ordre. Rien à suivre pour le moment.", "All good. Nothing to follow up right now.")}</div>`}`;
+    ${blocks.length ? blocks.map((b) => b[1]) : html`<div class="empty">${T("Tout est en ordre. Rien à suivre pour le moment.", "All good. Nothing to follow up right now.")}</div>`}
+    ${past.length > 0 && html`<details class="past"><summary class="section-title">${T(`Rendez-vous passés (${past.length})`, `Past appointments (${past.length})`)}</summary>
+      <div class="card">${past.map((a) => html`<div class="row"><div class="main">
+        <div class="name">${longDay(a.starts_at)} · ${timeOf(a.starts_at)}</div>
+        <div class="sub">${a.doctor_name || T("Médecin", "Doctor")}</div></div></div>`)}</div></details>`}`;
 }
