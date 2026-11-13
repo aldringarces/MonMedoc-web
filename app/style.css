@@ -159,3 +159,12 @@ button { font: inherit; color: inherit; }
 .archived summary { cursor: pointer; list-style: none; }
 .archived summary::before { content: "▸ "; }
 .archived[open] summary::before { content: "▾ "; }
+
+/* People and access (update 036) */
+.row.access { display: block; }
+.row.access .quick { display: flex; gap: 8px; margin-bottom: 10px; }
+.row.access .quick button { flex: 1; border: 1px solid var(--line); background: var(--card); border-radius: 8px; padding: 6px; cursor: pointer; }
+.access-row { margin: 10px 0; }
+.access-row .name { margin-bottom: 6px; }
+.segmented.small button { padding: 5px; font-size: 14px; }
+.row.access .rowbtn.red { margin-top: 8px; width: 100%; text-align: left; padding: 8px 0; }

@@ -2,7 +2,7 @@
 // Mon profil, leave, delete), the shown profile's details, address book,
 // account.
 import { useState, useEffect } from "https://esm.sh/preact@10.24.3/hooks";
-import { html, supabase, T, languageSetting, setLanguage, profileName, menuName, detailsTitle, ofProfile, mine, inviteLink, message } from "./lib.js";
+import { html, supabase, T, languageSetting, setLanguage, profileName, menuName, detailsTitle, ofProfile, mine, AREAS, LEVELS, accessOf, canSee, inviteLink, message } from "./lib.js";
 import { Avatar, Sheet, ErrorBox } from "./components.js";
 import { PrescriptionFiles } from "./meds.js";
 import { Spending } from "./spending.js";
@@ -27,17 +27,17 @@ export function Settings({ session, profiles, active, onSwitch, reload, openDeta
           <div class="sub">${T("Changer, ajouter ou partager un profil", "Switch, add or share a profile")}</div></div>
         <span class="chev">›</span>
       </button>
-      <button class="row rowbtn" onClick=${() => setOpenDetails(true)}>
+      ${canSee(active, "details") && html`<button class="row rowbtn" onClick=${() => setOpenDetails(true)}>
         <div class="main name">${detailsTitle(active)}</div><span class="chev">›</span>
-      </button>
+      </button>`}
     </div>
 
     <div class="section-title">${ofProfile(active, "Mon dossier santé", "My health records", "Dossier santé", "health records")}</div>
     <div class="card">
-      <button class="row rowbtn" onClick=${() => setSheet("doctors")}><div class="main name">${mine(active, "Mes médecins", "My doctors", "Médecins", "Doctors")}</div><span class="chev">›</span></button>
-      <button class="row rowbtn" onClick=${() => setSheet("pharmacies")}><div class="main name">${mine(active, "Mes pharmacies", "My pharmacies", "Pharmacies", "Pharmacies")}</div><span class="chev">›</span></button>
-      <button class="row rowbtn" onClick=${() => setSheet("prescriptions")}><div class="main name">${mine(active, "Mes ordonnances", "My prescriptions", "Ordonnances", "Prescriptions")}</div><span class="chev">›</span></button>
-      <button class="row rowbtn" onClick=${() => setSheet("spending")}><div class="main name">${mine(active, "Mes dépenses en pharmacie", "My pharmacy spending", "Dépenses en pharmacie", "Pharmacy spending")}</div><span class="chev">›</span></button>
+      ${canSee(active, "appointments") && html`<button class="row rowbtn" onClick=${() => setSheet("doctors")}><div class="main name">${mine(active, "Mes médecins", "My doctors", "Médecins", "Doctors")}</div><span class="chev">›</span></button>
+      <button class="row rowbtn" onClick=${() => setSheet("pharmacies")}><div class="main name">${mine(active, "Mes pharmacies", "My pharmacies", "Pharmacies", "Pharmacies")}</div><span class="chev">›</span></button>`}
+      ${canSee(active, "prescriptions") && html`<button class="row rowbtn" onClick=${() => setSheet("prescriptions")}><div class="main name">${mine(active, "Mes ordonnances", "My prescriptions", "Ordonnances", "Prescriptions")}</div><span class="chev">›</span></button>`}
+      ${canSee(active, "spending") && html`<button class="row rowbtn" onClick=${() => setSheet("spending")}><div class="main name">${mine(active, "Mes dépenses en pharmacie", "My pharmacy spending", "Dépenses en pharmacie", "Pharmacy spending")}</div><span class="chev">›</span></button>`}
     </div>
     <p class="note indent">${!active || active.is_self
       ? T("Vos médecins et pharmacies, vos ordonnances et ce que vous avez dépensé.", "Your doctors and pharmacies, your prescriptions and what you've spent.")
@@ -63,6 +63,7 @@ function ProfilesSheet({ profiles, onSwitch, reload, onClose }) {
   const [error, setError] = useState(null);
   const [code, setCode] = useState(null);
   const [copied, setCopied] = useState(false);
+  const [people, setPeople] = useState(false);
   const sorted = [...profiles].sort((a, b) => (b.is_self - a.is_self) || profileName(a).localeCompare(profileName(b)));
   const active = profiles.find((p) => p.is_active);
 
@@ -122,7 +123,8 @@ function ProfilesSheet({ profiles, onSwitch, reload, onClose }) {
 
     <div class="section-title">${T("Partager", "Share")}</div>
     <div class="card">
-      <button class="row rowbtn" onClick=${invite}>${T(`Inviter quelqu'un sur « ${active ? profileName(active) : ""} »`, `Invite someone to "${active ? profileName(active) : ""}"`)}</button>
+      ${(!active || active.role === "owner") && html`<button class="row rowbtn" onClick=${invite}>${T(`Inviter quelqu'un sur « ${active ? profileName(active) : ""} »`, `Invite someone to "${active ? profileName(active) : ""}"`)}</button>`}
+      ${active && active.member_count > 1 && html`<button class="row rowbtn" onClick=${() => setPeople(true)}><div class="main name">${T("Personnes et accès", "People and access")}</div><span class="chev">›</span></button>`}
       ${code && html`<div class="row"><div class="main center">
         <div class="code">${code}</div>
         <div class="sub">${inviteLink(code)}</div>
@@ -131,7 +133,80 @@ function ProfilesSheet({ profiles, onSwitch, reload, onClose }) {
       <button class="row rowbtn" onClick=${join}>${T("Rejoindre avec un code", "Join with a code")}</button>
       <button class="row rowbtn" onClick=${add}>${T("Ajouter un profil", "Add a profile")}</button>
     </div>
-    <p class="note">${T("Code valable 7 jours, une seule fois.", "Code valid 7 days, once.")}</p>
+    <p class="note">${T("Code valable 7 jours, une seule fois. Dans « Personnes et accès », choisissez ce que chacun peut voir ou modifier.",
+                        "Code valid 7 days, once. In \"People and access\", choose what each person can see or change.")}</p>
+    ${people && html`<${PeopleSheet} active=${active} onClose=${() => { setPeople(false); reload(); }} />`}
+  </${Sheet}>`;
+}
+
+// ---------- People and access (update 036) ----------
+function memberName(m) {
+  if (m.name && !["Moi", "Me"].includes(m.name)) return m.name;
+  if (m.email && !m.email.endsWith("privaterelay.appleid.com")) return m.email;
+  return m.name || T("Quelqu'un", "Someone");
+}
+const memberLevel = (m, area) => (m.role === "owner" ? "edit" : (m.permissions || {})[area] || "edit");
+function memberSummary(m) {
+  if (m.role === "owner") return T("Propriétaire", "Owner");
+  const levels = AREAS.map(([a]) => memberLevel(m, a));
+  if (levels.every((l) => l === "edit")) return T("Peut tout modifier", "Can edit everything");
+  if (levels.every((l) => l === "view")) return T("Peut tout voir", "Can view everything");
+  return T("Accès limité", "Limited access");
+}
+
+function PeopleSheet({ active, onClose }) {
+  const [members, setMembers] = useState(null);
+  const [open, setOpen] = useState(null);       // user_id being edited
+  const [error, setError] = useState(null);
+  const owner = active && active.role === "owner";
+
+  async function load() {
+    const { data, error } = await supabase.rpc("profile_member_list");
+    if (error) setError(message(error)); else setMembers(data || []);
+  }
+  useEffect(() => { load(); }, []);
+
+  async function setLevel(m, area, level) {
+    setError(null);
+    setMembers((list) => list.map((x) => x.user_id === m.user_id ? { ...x, permissions: { ...(x.permissions || {}), [area]: level } } : x));
+    const { error } = await supabase.rpc("set_member_access", { p_user: m.user_id, p_area: area, p_level: level });
+    if (error) { setError(message(error)); load(); }
+  }
+  async function setAll(m, level) { for (const [a] of AREAS) await setLevel(m, a, level); }
+  async function remove(m) {
+    if (!confirm(T(`Retirer ${memberName(m)} de ce profil ?`, `Remove ${memberName(m)} from this profile?`))) return;
+    const { error } = await supabase.rpc("remove_member", { p_user: m.user_id });
+    if (error) setError(message(error)); else { setOpen(null); load(); }
+  }
+
+  return html`<${Sheet} title=${T("Personnes et accès", "People and access")} onClose=${onClose}>
+    <${ErrorBox} error=${error} />
+    <div class="card">${!members ? html`<div class="row">…</div>` : members.map((m) => html`
+      ${owner && m.role !== "owner"
+        ? html`<button class="row rowbtn" onClick=${() => setOpen(open === m.user_id ? null : m.user_id)}>
+            <div class="main"><div class="name">${memberName(m)}</div><div class="sub">${memberSummary(m)}</div></div>
+            <span class="chev">${open === m.user_id ? "⌄" : "›"}</span></button>`
+        : html`<div class="row"><div class="main"><div class="name">${memberName(m)}${m.is_me ? T(" (vous)", " (you)") : ""}</div><div class="sub">${memberSummary(m)}</div></div></div>`}
+      ${open === m.user_id && html`<div class="row access"><div class="main">
+        <div class="quick">
+          <button class="small" onClick=${() => setAll(m, "edit")}>${T("Tout modifier", "Edit everything")}</button>
+          <button class="small" onClick=${() => setAll(m, "view")}>${T("Tout voir", "View everything")}</button>
+        </div>
+        ${AREAS.map(([a, fr, en]) => html`<div class="access-row">
+          <div class="name">${T(fr, en)}</div>
+          <div class="segmented small">${LEVELS.map(([l, lfr, len]) => html`<button class=${memberLevel(m, a) === l ? "on" : ""} onClick=${() => setLevel(m, a, l)}>${T(lfr, len)}</button>`)}</div>
+          ${a === "treatments" && html`<div class="sub">${T("« Voir » permet quand même de cocher une prise.", "\"View\" still lets them tick a dose.")}</div>`}
+        </div>`)}
+        <button class="rowbtn red" onClick=${() => remove(m)}>${T("Retirer de ce profil", "Remove from this profile")}</button>
+      </div></div>`}`)}
+    </div>
+    <p class="note">${owner
+      ? T("Masqué : la partie n'apparaît pas. Voir : lecture seule. Modifier : peut ajouter, changer et supprimer. Ses rappels suivent les mêmes règles.",
+          "Hidden: the part doesn't appear. View: read only. Edit: can add, change and delete. Their reminders follow the same rules.")
+      : T("Seul le propriétaire du profil choisit ce que chacun peut voir ou modifier.", "Only the profile's owner chooses what each person can see or change.")}</p>
+    ${!owner && active && html`<div class="section-title">${T("Vos accès", "Your access")}</div>
+      <div class="card">${AREAS.map(([a, fr, en]) => html`<div class="row"><div class="main">${T(fr, en)}</div>
+        <div class="sub">${T(...LEVELS.find(([l]) => l === accessOf(active, a)).slice(1))}</div></div>`)}</div>`}
   </${Sheet}>`;
 }
 

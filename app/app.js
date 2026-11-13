@@ -5,7 +5,7 @@
 // through the database's own rules: you only see the profile shown.
 import { render } from "https://esm.sh/preact@10.24.3";
 import { useState, useEffect } from "https://esm.sh/preact@10.24.3/hooks";
-import { html, supabase, T, tz, profileName, message } from "./js/lib.js";
+import { html, supabase, T, tz, profileName, message, canSee } from "./js/lib.js";
 import { ProfileMenu, ErrorBox } from "./js/components.js";
 import { Today } from "./js/today.js";
 import { History } from "./js/history.js";
@@ -86,6 +86,7 @@ function Main({ session }) {
   const [showHistory, setShowHistory] = useState(false);
   const [error, setError] = useState(null);
   const active = profiles.find((p) => p.is_active);
+  const showsInventory = medsView === "inventory" && canSee(active, "inventory");
 
   async function loadProfiles() {
     const { error: e1 } = await supabase.rpc("ensure_my_profile", { p_first_name: T("Moi", "Me") });
@@ -153,7 +154,7 @@ function Main({ session }) {
       : html`<span>${T("Aucune prise prévue", "No doses planned")}</span>`,
     meds: html`<div class="segmented">
       <button class=${medsView === "treatments" ? "on" : ""} onClick=${() => setMedsView("treatments")}>${T("Traitements", "Treatments")}</button>
-      <button class=${medsView === "inventory" ? "on" : ""} onClick=${() => setMedsView("inventory")}>${T("Inventaire", "Inventory")}</button></div>`,
+      ${canSee(active, "inventory") && html`<button class=${medsView === "inventory" ? "on" : ""} onClick=${() => setMedsView("inventory")}>${T("Inventaire", "Inventory")}</button>`}</div>`,
     followup: html`<span>${summary}</span>`,
     settings: html`<span>${session.user.email}</span>`,
   }[tab];
@@ -168,7 +169,7 @@ function Main({ session }) {
         <${ProfileMenu} profiles=${profiles} active=${active} onSwitch=${switchTo} onManage=${() => setTab("settings")} />
       </div>
       <div class="header-sub">${subline}</div>
-      ${tab === "meds" && medsView === "inventory" && html`<input class="search" type="search"
+      ${tab === "meds" && showsInventory && html`<input class="search" type="search"
           placeholder=${T("Nom, substance ou code CIP", "Name, substance or CIP code")} value=${search} onInput=${(e) => setSearch(e.target.value)} />`}
     </div>
     <${ErrorBox} error=${error} />
@@ -176,7 +177,7 @@ function Main({ session }) {
     ${tab === "today" && html`<${Today} doses=${doses} meds=${meds} indications=${indications} onToggle=${toggle}
         onChanged=${() => loadData().catch((e) => setError(message(e)))} onError=${setError} />`}
     ${showHistory && html`<${History} onClose=${() => setShowHistory(false)} onChanged=${() => loadData().catch(() => {})} />`}
-    ${tab === "meds" && (medsView === "treatments" ? html`<${Treatments} meds=${meds} shortages=${shortages} indications=${indications} />` : html`<${Inventory} key=${active && active.id} search=${search} />`)}
+    ${tab === "meds" && (!showsInventory ? html`<${Treatments} meds=${meds} shortages=${shortages} indications=${indications} />` : html`<${Inventory} key=${active && active.id} search=${search} />`)}
     ${tab === "followup" && html`<${FollowUp} key=${active && active.id} meds=${meds} shortages=${shortages} onSummary=${setSummary} />`}
     ${tab === "settings" && html`<${Settings} session=${session} profiles=${profiles} active=${active} onSwitch=${switchTo}
         reload=${loadAll} openDetails=${openDetails} setOpenDetails=${setOpenDetails} />`}
