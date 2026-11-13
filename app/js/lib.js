@@ -52,9 +52,13 @@ export function boxes(units, perBox) {
 export const profileName = (p) => [p.first_name, p.last_name ? p.last_name.toUpperCase() : null].filter(Boolean).join(" ");
 export const menuName = (p) => (p.is_self ? T("Mon profil", "My profile") : profileName(p));
 export const initials = (p) => ((p.first_name || "?")[0] + ((p.last_name || "")[0] || "")).toUpperCase();
-export function detailsTitle(p) {
-  if (!p || p.is_self) return T("Mes informations", "My details");
+// "Mon dossier santé" on my own profile, "Dossier santé de Rubilita" on someone else's
+export function ofProfile(p, mineFR, mineEN, nounFR, nounEN) {
+  if (!p || p.is_self) return T(mineFR, mineEN);
   const first = (p.first_name || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase()[0] || "";
-  return T(`Informations ${"aeiouyh".includes(first) ? "d'" : "de "}${p.first_name}`, `${p.first_name}'s details`);
+  return T(`${nounFR} ${"aeiouyh".includes(first) ? "d'" : "de "}${p.first_name}`, `${p.first_name}'s ${nounEN}`);
 }
+export const detailsTitle = (p) => ofProfile(p, "Mes informations", "My details", "Informations", "details");
+// "Mes ordonnances" on my own profile, plain "Ordonnances" on someone else's
+export const mine = (p, fr, en, otherFR, otherEN) => (!p || p.is_self ? T(fr, en) : T(otherFR, otherEN));
 export const inviteLink = (code) => `https://monmedoc.kalatas.com/rejoindre/?code=${code}`;

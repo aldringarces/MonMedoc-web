@@ -2,7 +2,7 @@
 // Mon profil, leave, delete), the shown profile's details, address book,
 // account.
 import { useState, useEffect } from "https://esm.sh/preact@10.24.3/hooks";
-import { html, supabase, T, languageSetting, setLanguage, profileName, menuName, detailsTitle, inviteLink, message } from "./lib.js";
+import { html, supabase, T, languageSetting, setLanguage, profileName, menuName, detailsTitle, ofProfile, mine, inviteLink, message } from "./lib.js";
 import { Avatar, Sheet, ErrorBox } from "./components.js";
 import { PrescriptionFiles } from "./meds.js";
 import { Spending } from "./spending.js";
@@ -32,15 +32,16 @@ export function Settings({ session, profiles, active, onSwitch, reload, openDeta
       </button>
     </div>
 
-    <div class="section-title">${T("Mon dossier santé", "My health records")}</div>
+    <div class="section-title">${ofProfile(active, "Mon dossier santé", "My health records", "Dossier santé", "health records")}</div>
     <div class="card">
-      <button class="row rowbtn" onClick=${() => setSheet("doctors")}><div class="main name">${T("Mes médecins", "My doctors")}</div><span class="chev">›</span></button>
-      <button class="row rowbtn" onClick=${() => setSheet("pharmacies")}><div class="main name">${T("Mes pharmacies", "My pharmacies")}</div><span class="chev">›</span></button>
-      <button class="row rowbtn" onClick=${() => setSheet("prescriptions")}><div class="main name">${T("Mes ordonnances", "My prescriptions")}</div><span class="chev">›</span></button>
-      <button class="row rowbtn" onClick=${() => setSheet("spending")}><div class="main name">${T("Mes dépenses en pharmacie", "My pharmacy spending")}</div><span class="chev">›</span></button>
+      <button class="row rowbtn" onClick=${() => setSheet("doctors")}><div class="main name">${mine(active, "Mes médecins", "My doctors", "Médecins", "Doctors")}</div><span class="chev">›</span></button>
+      <button class="row rowbtn" onClick=${() => setSheet("pharmacies")}><div class="main name">${mine(active, "Mes pharmacies", "My pharmacies", "Pharmacies", "Pharmacies")}</div><span class="chev">›</span></button>
+      <button class="row rowbtn" onClick=${() => setSheet("prescriptions")}><div class="main name">${mine(active, "Mes ordonnances", "My prescriptions", "Ordonnances", "Prescriptions")}</div><span class="chev">›</span></button>
+      <button class="row rowbtn" onClick=${() => setSheet("spending")}><div class="main name">${mine(active, "Mes dépenses en pharmacie", "My pharmacy spending", "Dépenses en pharmacie", "Pharmacy spending")}</div><span class="chev">›</span></button>
     </div>
-    <p class="note indent">${T("Vos médecins et pharmacies, vos ordonnances et ce que vous avez dépensé, pour le profil affiché.",
-                              "Your doctors and pharmacies, your prescriptions and what you've spent, for the profile shown.")}</p>
+    <p class="note indent">${!active || active.is_self
+      ? T("Vos médecins et pharmacies, vos ordonnances et ce que vous avez dépensé.", "Your doctors and pharmacies, your prescriptions and what you've spent.")
+      : T("Ses médecins et pharmacies, ses ordonnances et ce qui a été dépensé pour ce profil.", "Their doctors and pharmacies, their prescriptions and what was spent for this profile.")}</p>
 
     <div class="section-title">${T("Compte", "Account")}</div>
     <div class="card">
@@ -50,8 +51,8 @@ export function Settings({ session, profiles, active, onSwitch, reload, openDeta
     <p class="note center">${T("Rappels, scan et ajout de traitements : dans l'app iPhone.", "Reminders, scanning and adding treatments: in the iPhone app.")}</p>
 
     ${sheet === "profiles" && html`<${ProfilesSheet} profiles=${profiles} onSwitch=${onSwitch} reload=${reload} onClose=${() => setSheet(null)} />`}
-    ${(sheet === "doctors" || sheet === "pharmacies") && html`<${PlacesSheet} kind=${sheet} onClose=${() => setSheet(null)} />`}
-    ${sheet === "prescriptions" && html`<${Sheet} title=${T("Mes ordonnances", "My prescriptions")} onClose=${() => setSheet(null)}>
+    ${(sheet === "doctors" || sheet === "pharmacies") && html`<${PlacesSheet} kind=${sheet} active=${active} onClose=${() => setSheet(null)} />`}
+    ${sheet === "prescriptions" && html`<${Sheet} title=${mine(active, "Mes ordonnances", "My prescriptions", "Ordonnances", "Prescriptions")} onClose=${() => setSheet(null)}>
         <${PrescriptionFiles} all=${true} /><//>`}
     ${sheet === "spending" && html`<${Spending} onClose=${() => setSheet(null)} />`}
     ${openDetails && html`<${DetailsSheet} active=${active} reload=${reload} onClose=${() => setOpenDetails(false)} />`}`;
@@ -135,10 +136,10 @@ function ProfilesSheet({ profiles, onSwitch, reload, onClose }) {
 }
 
 // ---------- Address book (read-only here) ----------
-function PlacesSheet({ kind, onClose }) {
+function PlacesSheet({ kind, active, onClose }) {
   const [places, setPlaces] = useState(null);
   useEffect(() => { supabase.from(kind).select().order("name").then(({ data }) => setPlaces(data || [])); }, []);
-  return html`<${Sheet} title=${kind === "doctors" ? T("Mes médecins", "My doctors") : T("Mes pharmacies", "My pharmacies")} onClose=${onClose}>
+  return html`<${Sheet} title=${kind === "doctors" ? mine(active, "Mes médecins", "My doctors", "Médecins", "Doctors") : mine(active, "Mes pharmacies", "My pharmacies", "Pharmacies", "Pharmacies")} onClose=${onClose}>
     <div class="card">${!places ? html`<div class="row">…</div>` : !places.length ? html`<div class="row sub">${T("Aucun pour l'instant.", "None yet.")}</div>` :
       places.map((p) => html`<div class="row"><div class="main">
         <div class="name">${p.name}</div>
