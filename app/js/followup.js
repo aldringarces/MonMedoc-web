@@ -18,9 +18,11 @@ function pharmacyDay(m) {
   if (Number(m.units_dispensed_total) > 0 && perDay > 0 && start) {
     last = addDays(start, Math.floor(Number(m.units_dispensed_total) / perDay) - 1);
   } else {
-    if (m.days_of_stock_left == null) return today;
-    if (m.days_of_stock_left <= 0) return addDays(today, 1);
-    last = addDays(today, m.days_of_stock_left - 1);
+    // Nothing collected yet: before loose pills + reserve run out
+    const left = Number(m.units_dispensed_total) === 0 ? (m.days_left_total ?? m.days_of_stock_left) : m.days_of_stock_left;
+    if (left == null) return today;
+    if (left <= 0) return addDays(today, 1);
+    last = addDays(today, left - 1);
   }
   const end = parseDay(m.prescription_end_date);
   if (end && last >= end) return null;
@@ -34,7 +36,8 @@ function pharmacyDay(m) {
 function pharmacyVisits(meds) {
   const byPharmacy = {};
   for (const m of meds) {
-    const firstPickup = Number(m.units_dispensed_total) === 0 && Number(m.current_stock) === 0 && Number(m.units_outstanding) > 0;
+    // New or renewed prescription, nothing collected yet (even with pills left)
+    const firstPickup = !m.pharmacy_owes && !m.as_needed && Number(m.units_dispensed_total) === 0 && Number(m.units_outstanding) > 0;
     if (!(m.pharmacy_owes || firstPickup)) continue;
     const day = pharmacyDay(m);
     if (!day) continue;

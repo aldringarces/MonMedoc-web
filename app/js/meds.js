@@ -37,6 +37,8 @@ export function Treatments({ meds, shortages, indications }) {
         ${m.low_stock && html`<span class="badge low">${Number(m.inventory_units || 0) > 0 ? T("Boîte à ouvrir", "Open a box") : T("Stock bas", "Low stock")}</span>`}
         ${shortage && html`<span class="badge rdv">${shortageBadge(shortage)}</span>`}
         ${m.pharmacy_owes && html`<span class="badge owes">${T(`La pharmacie doit ${clean(m.units_outstanding)}`, `Pharmacy owes ${clean(m.units_outstanding)}`)}</span>`}
+        ${!m.pharmacy_owes && !m.as_needed && Number(m.units_dispensed_total) === 0 && Number(m.units_outstanding) > 0
+          && html`<span class="badge owes">${T(`À récupérer : ${clean(m.units_outstanding)}`, `To collect: ${clean(m.units_outstanding)}`)}</span>`}
         ${m.rdv_due && html`<span class="badge rdv">${T("RDV à prendre", "Book appointment")}</span>`}
       </div>
     </div><span class="chev">›</span></button>`;
